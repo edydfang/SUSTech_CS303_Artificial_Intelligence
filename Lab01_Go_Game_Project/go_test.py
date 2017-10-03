@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import numpy as np
 import os
 import sys
@@ -86,10 +87,9 @@ def plot_go(go_arr, txt='Default'):
     root.mainloop()
 
 
-def search_neighbor(i,j,go_arr,neighbor_list):
+def search_neighbor(i, j, go_arr, neighbor_list):
     pass
 
-    
 
 #-------------------------------------------------------
 # Rule judgement  *need finish
@@ -111,27 +111,56 @@ def is_alive(check_state, go_arr, i, j, color_type):
     right_pos = None
     up_pos = None
     down_pos = None
-    has_qi = FALSE
-    connected_pos = list((i,j))
-    if i > 0:
-        left_pos = (i - 1, j)
-        if go_arr[left_pos[0], left_pos[1]] == COLOR_NONE:
-            has_qi == True
-        if go_arr[left_pos[0], left_pos[1]] == color_type:
-            connected_pos.append(left_pos)
-            check_state[i,j] = POINT_STATE_CHECKED
-    if j > 0:
-        up_pos = (i, j - 1)
-        if go_arr[up_pos[0], up_pos[1]] == COLOR_NONE:
-            has_qi == True
-        if go_arr[up_pos[0], up_pos[1]] == color_type:
-            connected_pos.append(left_pos)
-    if i < go_arr.shape[0] - 1:
-        right_pos = (i + 1, j)
-    if j < go_arr.shape[0] - 1:
-        down_pos = (i, j + 1)
-    pass 
-    
+    has_qi = False
+    connected_pos = [(i, j)]
+    visited = set()
+    # print( go_arr.shape[0], go_arr.shape[1])
+    while len(connected_pos) > 0:
+        # print(connected_pos)
+        (curi, curj) = connected_pos.pop()
+        visited.add((curi, curj))
+        if check_state[curi, curj] != POINT_STATE_UNCHECKED:
+            continue
+        else:
+            check_state[curi, curj] = POINT_STATE_CHECKED
+        if curi > 0:
+            left_pos = (curi - 1, curj)
+            if go_arr[left_pos[0], left_pos[1]] == COLOR_NONE:
+                check_state[left_pos[0], left_pos[1]] = POINT_STATE_EMPYT
+                has_qi = True
+            elif go_arr[left_pos[0], left_pos[1]] == color_type:
+                connected_pos.append(left_pos)
+        if curj > 0:
+            up_pos = (curi, curj - 1)
+            if go_arr[up_pos[0], up_pos[1]] == COLOR_NONE:
+                check_state[left_pos[0], left_pos[1]] = POINT_STATE_EMPYT
+                has_qi = True
+            elif go_arr[up_pos[0], up_pos[1]] == color_type:
+                connected_pos.append(up_pos)
+        if curi < go_arr.shape[0] - 1:
+            right_pos = (curi + 1, curj)
+            if go_arr[right_pos[0], right_pos[1]] == COLOR_NONE:
+                check_state[left_pos[0], left_pos[1]] = POINT_STATE_EMPYT
+                has_qi = True
+            elif go_arr[right_pos[0], right_pos[1]] == color_type:
+                connected_pos.append(right_pos)
+        if curj < go_arr.shape[0] - 1:
+            down_pos = (curi, curj + 1)
+            if go_arr[down_pos[0], down_pos[1]] == COLOR_NONE:
+                check_state[left_pos[0], left_pos[1]] = POINT_STATE_EMPYT
+                has_qi = True
+            elif go_arr[down_pos[0], down_pos[1]] == color_type:
+                connected_pos.append(down_pos)
+    if has_qi:
+        for p in visited:
+            check_state[p[0],p[1]] = POINT_STATE_ALIVE
+    else:
+        # print("GG")
+        for p in visited:
+            print(p)
+            check_state[p[0],p[1]] = POINT_STATE_NOT_ALIVE
+            
+    return check_state[i,j]
 
 
 def go_judege(go_arr):
