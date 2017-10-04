@@ -133,7 +133,7 @@ def is_alive(check_state, go_arr, i, j, color_type):
         if curj > 0:
             up_pos = (curi, curj - 1)
             if go_arr[up_pos[0], up_pos[1]] == COLOR_NONE:
-                check_state[left_pos[0], left_pos[1]] = POINT_STATE_EMPYT
+                check_state[up_pos[0], up_pos[1]] = POINT_STATE_EMPYT
                 has_qi = True
             elif go_arr[up_pos[0], up_pos[1]] == color_type:
                 connected_pos.append(up_pos)
@@ -147,20 +147,20 @@ def is_alive(check_state, go_arr, i, j, color_type):
         if curj < go_arr.shape[0] - 1:
             down_pos = (curi, curj + 1)
             if go_arr[down_pos[0], down_pos[1]] == COLOR_NONE:
-                check_state[left_pos[0], left_pos[1]] = POINT_STATE_EMPYT
+                check_state[down_pos[0], down_pos[1]] = POINT_STATE_EMPYT
                 has_qi = True
             elif go_arr[down_pos[0], down_pos[1]] == color_type:
                 connected_pos.append(down_pos)
     if has_qi:
         for p in visited:
-            check_state[p[0],p[1]] = POINT_STATE_ALIVE
+            check_state[p[0], p[1]] = POINT_STATE_ALIVE
     else:
         # print("GG")
         for p in visited:
-            print(p)
-            check_state[p[0],p[1]] = POINT_STATE_NOT_ALIVE
-            
-    return check_state[i,j]
+            # print(p)
+            check_state[p[0], p[1]] = POINT_STATE_NOT_ALIVE
+
+    return check_state[i, j]
 
 
 def go_judege(go_arr):
@@ -192,11 +192,103 @@ def go_judege(go_arr):
 #-------------------------------------------------------
 
 
+def __get_surrounding(go_arr, point):
+    '''
+    :param go_arr: chessboard
+    :param point: (i,j) point to be checked
+    left,right,up,below
+    '''
+    left_pos = None
+    right_pos = None
+    up_pos = None
+    down_pos = None
+    (i, j) = point
+    if i > 0:
+        left_pos = (i - 1, j)
+    if j > 0:
+        up_pos = (i, j - 1)
+    if i < go_arr.shape[0] - 1:
+        right_pos = (i + 1, j)
+    if j < go_arr.shape[1] - 1:
+        down_pos = (i, j + 1)
+    return (left_pos, right_pos, up_pos, down_pos)
+
+
+def __get_state(go_arr, point, check_state):
+    '''
+    can be accelerated by transmitting a status matrix
+    :param go_arr: chessboard
+    :param point: (i,j) point to be checked
+    :return status of the point
+    '''
+    color_type = COLOR_WHITE
+    left_pos = None
+    right_pos = None
+    up_pos = None
+    down_pos = None
+    has_qi = False
+    connected_pos = [(point[0], point[1])]
+    visited = set()
+    # print( go_arr.shape[0], go_arr.shape[1])
+    while len(connected_pos) > 0:
+        # print(connected_pos)
+        (curi, curj) = connected_pos.pop()
+        visited.add((curi, curj))
+        if check_state[curi, curj] != POINT_STATE_UNCHECKED:
+            continue
+        else:
+            check_state[curi, curj] = POINT_STATE_CHECKED
+        if curi > 0:
+            left_pos = (curi - 1, curj)
+            if go_arr[left_pos[0], left_pos[1]] == COLOR_NONE:
+                check_state[left_pos[0], left_pos[1]] = POINT_STATE_EMPYT
+                has_qi = True
+            elif go_arr[left_pos[0], left_pos[1]] == color_type:
+                connected_pos.append(left_pos)
+        if curj > 0:
+            up_pos = (curi, curj - 1)
+            if go_arr[up_pos[0], up_pos[1]] == COLOR_NONE:
+                check_state[up_pos[0], up_pos[1]] = POINT_STATE_EMPYT
+                has_qi = True
+            elif go_arr[up_pos[0], up_pos[1]] == color_type:
+                connected_pos.append(up_pos)
+        if curi < go_arr.shape[0] - 1:
+            right_pos = (curi + 1, curj)
+            if go_arr[right_pos[0], right_pos[1]] == COLOR_NONE:
+                check_state[left_pos[0], left_pos[1]] = POINT_STATE_EMPYT
+                has_qi = True
+            elif go_arr[right_pos[0], right_pos[1]] == color_type:
+                connected_pos.append(right_pos)
+        if curj < go_arr.shape[0] - 1:
+            down_pos = (curi, curj + 1)
+            if go_arr[down_pos[0], down_pos[1]] == COLOR_NONE:
+                check_state[down_pos[0], down_pos[1]] = POINT_STATE_EMPYT
+                has_qi = True
+            elif go_arr[down_pos[0], down_pos[1]] == color_type:
+                connected_pos.append(down_pos)
+    if has_qi:
+        for p in visited:
+            check_state[p[0], p[1]] = POINT_STATE_ALIVE
+    else:
+        # print("GG")
+        for p in visited:
+            # print(p)
+            check_state[p[0], p[1]] = POINT_STATE_NOT_ALIVE
+
+    return check_state[point[0], point[1]]
+
+
 def user_step_eat(go_arr):
     '''
     :param go_arr: chessboard
     :return: ans=>where to put one step forward for white chess pieces so that some black chess pieces will be killed; user_arr=> the result chessboard after the step
     '''
+    # first find the chesses with only one qi
+    check_state = np.zeros(go_arr.shape)
+    check_state[:] = POINT_STATE_EMPYT
+    tmp_indx = np.where(go_arr != 0)
+    check_state[tmp_indx] = POINT_STATE_UNCHECKED
+    # block that qi
     pass
 
 
@@ -204,9 +296,35 @@ def user_setp_possible(go_arr):
     '''
     :param go_arr: chessboard
     :return: ans=> all the possible locations to put one step forward for white chess pieces
+    check block by block (connected)
     '''
-    pass
 
+    go_arr_copy = np.copy(go_arr)
+    possible_list = list()
+    cur_block = list()
+    check_state = np.zeros(go_arr.shape)
+    check_state[:] = POINT_STATE_EMPYT
+    tmp_indx = np.where(go_arr != 0)
+    check_state[tmp_indx] = POINT_STATE_UNCHECKED
+    for i in range(go_arr_copy.shape[0]):
+        for j in range(go_arr_copy.shape[1]):
+            if check_state[i, j] == POINT_STATE_EMPYT:
+                #tmp_alive = is_alive(check_state, go_arr, i, j, go_arr[i, j])
+                has_qi = False
+                surrounding_pos = __get_surrounding(go_arr_copy,(i,j))
+                for pos in surrounding_pos:
+                    if not pos:
+                        if go_arr_copy[pos] == COLOR_NONE:
+                            check_state[cos] = POINT_STATE_CHECKED
+                            has_qi = True
+                        elif  go_arr_copy[pos] == COLOR_WHITE:
+                            cur_block.append(pos)
+                        else:
+                            pass
+
+                if(has_qi):
+                    possible_list.append((i,j))
+    return possible_list
 
 if __name__ == "__main__":
     chess_rule_monitor = True
@@ -231,7 +349,7 @@ if __name__ == "__main__":
 
     # The second~fifth prolbem: forward one step and eat the adverse points on the chessboard
     for i in range(1, 5):
-        problem_tag = "Problem {}: forward on step".format(i)
+        problem_tag = "Problem {}: forward one step".format(i)
         go_arr = read_go('{}_{}.txt'.format(file_tag, i))
         plot_go(go_arr, problem_tag)
         chess_rule_monitor = go_judege(go_arr)
