@@ -214,14 +214,13 @@ def __get_surrounding(go_arr, point):
     return (left_pos, right_pos, up_pos, down_pos)
 
 
-def __get_state(go_arr, point, check_state):
+def __get_state(go_arr, point, check_state, color_type):
     '''
     can be accelerated by transmitting a status matrix
     :param go_arr: chessboard
     :param point: (i,j) point to be checked
     :return status of the point
     '''
-    color_type = COLOR_WHITE
     left_pos = None
     right_pos = None
     up_pos = None
@@ -229,20 +228,23 @@ def __get_state(go_arr, point, check_state):
     has_qi = False
     connected_pos = [(point[0], point[1])]
     visited = set()
+    qi_pos = set()
+
     # print( go_arr.shape[0], go_arr.shape[1])
-    while len(connected_pos) > 0:
+    while connected_pos:
         # print(connected_pos)
         (curi, curj) = connected_pos.pop()
         visited.add((curi, curj))
-        if check_state[curi, curj] != POINT_STATE_UNCHECKED:
+        if check_state[curi, curj][0] != POINT_STATE_UNCHECKED:
             continue
         else:
-            check_state[curi, curj] = POINT_STATE_CHECKED
+            check_state[curi, curj] = (POINT_STATE_CHECKED,0)
         if curi > 0:
             left_pos = (curi - 1, curj)
             if go_arr[left_pos[0], left_pos[1]] == COLOR_NONE:
                 check_state[left_pos[0], left_pos[1]] = POINT_STATE_EMPYT
                 has_qi = True
+                qi_pos.add(left_pos)
             elif go_arr[left_pos[0], left_pos[1]] == color_type:
                 connected_pos.append(left_pos)
         if curj > 0:
@@ -250,6 +252,7 @@ def __get_state(go_arr, point, check_state):
             if go_arr[up_pos[0], up_pos[1]] == COLOR_NONE:
                 check_state[up_pos[0], up_pos[1]] = POINT_STATE_EMPYT
                 has_qi = True
+                qi_pos.add(up_pos)
             elif go_arr[up_pos[0], up_pos[1]] == color_type:
                 connected_pos.append(up_pos)
         if curi < go_arr.shape[0] - 1:
@@ -257,6 +260,7 @@ def __get_state(go_arr, point, check_state):
             if go_arr[right_pos[0], right_pos[1]] == COLOR_NONE:
                 check_state[left_pos[0], left_pos[1]] = POINT_STATE_EMPYT
                 has_qi = True
+                qi_pos.add(right_pos)
             elif go_arr[right_pos[0], right_pos[1]] == color_type:
                 connected_pos.append(right_pos)
         if curj < go_arr.shape[0] - 1:
@@ -264,18 +268,18 @@ def __get_state(go_arr, point, check_state):
             if go_arr[down_pos[0], down_pos[1]] == COLOR_NONE:
                 check_state[down_pos[0], down_pos[1]] = POINT_STATE_EMPYT
                 has_qi = True
+                qi_pos.add(down_pos)
             elif go_arr[down_pos[0], down_pos[1]] == color_type:
                 connected_pos.append(down_pos)
     if has_qi:
         for p in visited:
-            check_state[p[0], p[1]] = POINT_STATE_ALIVE
+            check_state[p] = (POINT_STATE_ALIVE, len(qi_pos))
     else:
-        # print("GG")
         for p in visited:
-            # print(p)
-            check_state[p[0], p[1]] = POINT_STATE_NOT_ALIVE
+            check_state[p] = (POINT_STATE_NOT_ALIVE, 0)
 
-    return check_state[point[0], point[1]]
+    
+    return check_state[point]
 
 
 def user_step_eat(go_arr):
@@ -291,6 +295,12 @@ def user_step_eat(go_arr):
     # block that qi
     pass
 
+def __init_check_state(go_arr):
+    check_state = np.zeros(go_arr.shape)
+    check_state[:] = (POINT_STATE_EMPYT, 0)
+    tmp_indx = np.where(go_arr != 0)
+    check_state[tmp_indx] = (POINT_STATE_UNCHECKED, 0)
+    return check_state
 
 def user_setp_possible(go_arr):
     '''
@@ -299,30 +309,45 @@ def user_setp_possible(go_arr):
     check block by block (connected)
     '''
 
-    go_arr_copy = np.copy(go_arr)
+    
     possible_list = list()
-    cur_block = list()
-    check_state = np.zeros(go_arr.shape)
-    check_state[:] = POINT_STATE_EMPYT
-    tmp_indx = np.where(go_arr != 0)
-    check_state[tmp_indx] = POINT_STATE_UNCHECKED
-    for i in range(go_arr_copy.shape[0]):
-        for j in range(go_arr_copy.shape[1]):
-            if check_state[i, j] == POINT_STATE_EMPYT:
-                #tmp_alive = is_alive(check_state, go_arr, i, j, go_arr[i, j])
+    check_state = __init_check_state(go_arr)    
+    for i in range(go_arr.shape[0]):
+        for j in range(go_arr.shape[1]):
+            # if have space for new white chess
+            if check_state[i, j] == (POINT_STATE_EMPYT,0):
                 has_qi = False
-                surrounding_pos = __get_surrounding(go_arr_copy,(i,j))
+                surrounding_pos = __get_surrounding(go_arr,(i,j))
+                # detect the surrounding
                 for pos in surrounding_pos:
                     if not pos:
-                        if go_arr_copy[pos] == COLOR_NONE:
-                            check_state[cos] = POINT_STATE_CHECKED
+                        # 1. there is qi around the empty
+                        if go_arr[pos] == COLOR_NONE:
+                            check_state[pos] = (POINT_STATE_CHECKED,0)
                             has_qi = True
-                        elif  go_arr_copy[pos] == COLOR_WHITE:
-                            cur_block.append(pos)
+                        # 2. new chess can be connected and the block will has qi
+                        elif  go_arr[pos] == COLOR_WHITE:
+                            go_arr_copy = np.copy(go_arr)
+                            if check_state[pos][0] == POINT_STATE_UNCHECKED:
+                                state,num_qi = __get_state(go_arr_copy, pos, check_state, COLOR_WHITE)
+                            else:
+                                num_qi = check_state[pos][1]
+                            if num_qi > 1:
+                                has_qi = True
+                # 3. some other chess can be eat
+                if not has_qi:
+                    go_arr_copy = np.copy(go_arr)
+                    go_arr_copy[i,j] = COLOR_WHITE
+                    __init_check_state(go_arr_copy)
+                    for pos in surrounding_pos:
+                        if check_state[pos][0] == POINT_STATE_UNCHECKED:
+                            state,num_qi = __get_state(go_arr_copy, pos, check_state, COLOR_BLACK)
                         else:
-                            pass
-
-                if(has_qi):
+                            state = check_state[pos][0]
+                        if state == POINT_STATE_NOT_ALIVE:
+                            has_qi = True
+                            break
+                if has_qi:
                     possible_list.append((i,j))
     return possible_list
 
