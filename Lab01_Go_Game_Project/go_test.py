@@ -87,9 +87,6 @@ def plot_go(go_arr, txt='Default'):
     root.mainloop()
 
 
-def search_neighbor(i, j, go_arr, neighbor_list):
-    pass
-
 
 #-------------------------------------------------------
 # Rule judgement  *need finish
@@ -162,6 +159,12 @@ def is_alive(check_state, go_arr, i, j, color_type):
 
     return check_state[i, j]
 
+def __init_check_state2(go_arr):
+    check_state = np.zeros(go_arr.shape)
+    check_state[:] = POINT_STATE_EMPYT
+    tmp_indx = np.where(go_arr != 0)
+    check_state[tmp_indx] = POINT_STATE_UNCHECKED
+    return check_state
 
 def go_judege(go_arr):
     '''
@@ -172,10 +175,7 @@ def go_judege(go_arr):
     '''
     # print(go_arr)
     is_fit_go_rule = True
-    check_state = np.zeros(go_arr.shape)
-    check_state[:] = POINT_STATE_EMPYT
-    tmp_indx = np.where(go_arr != 0)
-    check_state[tmp_indx] = POINT_STATE_UNCHECKED
+    check_state = __init_check_state2(go_arr)
     for i in range(go_arr.shape[0]):
         for j in range(go_arr.shape[1]):
             if check_state[i, j] == POINT_STATE_UNCHECKED:
@@ -198,21 +198,121 @@ def __get_surrounding(go_arr, point):
     :param point: (i,j) point to be checked
     left,right,up,below
     '''
+    neighbors = list()
+    (i, j) = point
+    if i > 0:
+        left_pos = (i - 1, j)
+        neighbors.append(left_pos)
+    if j > 0:
+        up_pos = (i, j - 1)
+        neighbors.append(up_pos)
+    if i < go_arr.shape[0] - 1:
+        right_pos = (i + 1, j)
+        neighbors.append(right_pos)
+    if j < go_arr.shape[1] - 1:
+        down_pos = (i, j + 1)
+        neighbors.append(down_pos)
+    
+    return neighbors
+
+
+def __get_qi_set(go_arr, point, check_state, color_type):
+    '''
+    can be accelerated by transmitting a status matrix
+    :param go_arr: chessboard
+    :param point: (i,j) point to be checked
+    :return status of the point
+    '''
     left_pos = None
     right_pos = None
     up_pos = None
     down_pos = None
-    (i, j) = point
-    if i > 0:
-        left_pos = (i - 1, j)
-    if j > 0:
-        up_pos = (i, j - 1)
-    if i < go_arr.shape[0] - 1:
-        right_pos = (i + 1, j)
-    if j < go_arr.shape[1] - 1:
-        down_pos = (i, j + 1)
-    return (left_pos, right_pos, up_pos, down_pos)
+    has_qi = False
+    connected_pos = [(point[0], point[1])]
+    visited = set()
+    qi_pos = set()
 
+    # print( go_arr.shape[0], go_arr.shape[1])
+    while connected_pos:
+        # print(connected_pos)
+        (curi, curj) = connected_pos.pop()
+        visited.add((curi, curj))
+        if check_state[curi, curj][0] != POINT_STATE_UNCHECKED:
+            continue
+        else:
+            check_state[curi, curj, :] = (POINT_STATE_CHECKED, 0)
+        if curi > 0:
+            left_pos = (curi - 1, curj)
+            if go_arr[left_pos[0], left_pos[1]] == COLOR_NONE:
+                check_state[left_pos[0], left_pos[1], 0] = POINT_STATE_EMPYT
+                has_qi = True
+                qi_pos.add(left_pos)
+            elif go_arr[left_pos[0], left_pos[1]] == color_type:
+                connected_pos.append(left_pos)
+        if curj > 0:
+            up_pos = (curi, curj - 1)
+            if go_arr[up_pos[0], up_pos[1]] == COLOR_NONE:
+                check_state[up_pos[0], up_pos[1], 0] = POINT_STATE_EMPYT
+                has_qi = True
+                qi_pos.add(up_pos)
+            elif go_arr[up_pos[0], up_pos[1]] == color_type:
+                connected_pos.append(up_pos)
+        if curi < go_arr.shape[0] - 1:
+            right_pos = (curi + 1, curj)
+            if go_arr[right_pos[0], right_pos[1]] == COLOR_NONE:
+                check_state[left_pos[0], left_pos[1], 0] = POINT_STATE_EMPYT
+                has_qi = True
+                qi_pos.add(right_pos)
+            elif go_arr[right_pos[0], right_pos[1]] == color_type:
+                connected_pos.append(right_pos)
+        if curj < go_arr.shape[0] - 1:
+            down_pos = (curi, curj + 1)
+            if go_arr[down_pos[0], down_pos[1]] == COLOR_NONE:
+                check_state[down_pos[0], down_pos[1], 0] = POINT_STATE_EMPYT
+                has_qi = True
+                qi_pos.add(down_pos)
+            elif go_arr[down_pos[0], down_pos[1]] == color_type:
+                connected_pos.append(down_pos)
+    if has_qi:
+        for p in visited:
+            check_state[p][:] = (POINT_STATE_ALIVE, len(qi_pos))
+    else:
+        for p in visited:
+            check_state[p][:] = (POINT_STATE_NOT_ALIVE, 0)
+
+    return qi_pos
+
+def __remove_block(go_arr, pos, color):
+    block = [pos,]
+    while block:
+        cur_pos = block.pop()
+        go_arr[cur_pos] = COLOR_NONE
+        surrounding_pos = __get_surrounding(go_arr,cur_pos)
+        for pos in surrounding_pos:
+            # print(pos)
+            if go_arr[pos] == color:
+                block.append(pos)
+        
+
+def __get_result(go_arr, newpos):
+    surrounding_pos = __get_surrounding(go_arr,newpos)
+    go_arr_copy = np.copy(go_arr)
+    go_arr_copy[newpos] = COLOR_WHITE
+    
+    # print("surround", surrounding_pos)
+    for pos in surrounding_pos:
+        if go_arr_copy[pos] == COLOR_BLACK:
+            check_state = __init_check_state2(go_arr_copy)
+            # print("check", pos, check_state)
+            alive = is_alive(check_state,go_arr_copy,pos[0],pos[1],COLOR_BLACK)
+            if alive == POINT_STATE_NOT_ALIVE:
+                # print("remove", pos)
+                __remove_block(go_arr_copy, pos, COLOR_BLACK)
+                check_state[:] = POINT_STATE_EMPYT
+                tmp_indx = np.where(go_arr_copy != 0)
+                check_state[tmp_indx] = POINT_STATE_UNCHECKED
+                
+    return go_arr_copy
 
 def __get_state(go_arr, point, check_state, color_type):
     '''
@@ -287,12 +387,23 @@ def user_step_eat(go_arr):
     :return: ans=>where to put one step forward for white chess pieces so that some black chess pieces will be killed; user_arr=> the result chessboard after the step
     '''
     # first find the chesses with only one qi
-    check_state = np.zeros(go_arr.shape)
-    check_state[:] = POINT_STATE_EMPYT
-    tmp_indx = np.where(go_arr != 0)
-    check_state[tmp_indx] = POINT_STATE_UNCHECKED
-    # block that qi
-    pass
+    # tranverse all black blocks
+    newpos_set = set()
+    check_state = __init_check_state(go_arr)
+    for i in range(go_arr.shape[0]):
+        for j in range(go_arr.shape[1]):
+            if check_state[i,j, 0] == POINT_STATE_UNCHECKED:
+                if go_arr[i,j] == COLOR_BLACK:
+                    qi_pos_set = __get_qi_set(go_arr, (i,j), check_state, COLOR_BLACK)
+                    if qi_pos_set and len(qi_pos_set) == 1:
+                        newpos = qi_pos_set.pop()
+                        newpos_set.add(newpos)
+    new_arr = np.copy(go_arr)
+    for newpos in newpos_set:
+        new_arr = __get_result(new_arr,newpos)
+                        
+    return newpos_set, new_arr
+    
 
 
 def __init_check_state(go_arr):
@@ -364,7 +475,7 @@ if __name__ == "__main__":
     problem_tag = "Default"
     ans = []
     user_arr = np.zeros([0, 0])
-    '''
+    
     # The first problem: rule checking
     problem_tag = "Problem 0: rule checking"
     go_arr = read_go('{}_0.txt'.format(file_tag))
@@ -379,17 +490,17 @@ if __name__ == "__main__":
     chess_rule_monitor = go_judege(go_arr)
     print("{}:{}".format(problem_tag, chess_rule_monitor))
     plot_go(go_arr, '{}=>{}'.format(problem_tag, chess_rule_monitor))
-
+    
     # The second~fifth prolbem: forward one step and eat the adverse points on the chessboard
     for i in range(1, 5):
         problem_tag = "Problem {}: forward one step".format(i)
         go_arr = read_go('{}_{}.txt'.format(file_tag, i))
         plot_go(go_arr, problem_tag)
         chess_rule_monitor = go_judege(go_arr)
-        # ans, user_arr = user_step_eat(go_arr) # need finish
+        ans, user_arr = user_step_eat(go_arr) # need finish
         print("{}:{}".format(problem_tag, ans))
         plot_go(user_arr, '{}=>{}'.format(problem_tag, chess_rule_monitor))
-    '''
+    
     # The sixth problem: find all the postion which can place a white chess pieces
     problem_tag = "Problem {}: all possible position".format(5)
     go_arr = read_go('{}_{}.txt'.format(file_tag, 5))
