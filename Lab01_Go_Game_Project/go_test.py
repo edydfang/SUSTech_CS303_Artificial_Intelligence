@@ -87,7 +87,6 @@ def plot_go(go_arr, txt='Default'):
     root.mainloop()
 
 
-
 #-------------------------------------------------------
 # Rule judgement  *need finish
 #-------------------------------------------------------
@@ -159,12 +158,14 @@ def is_alive(check_state, go_arr, i, j, color_type):
 
     return check_state[i, j]
 
+
 def __init_check_state2(go_arr):
     check_state = np.zeros(go_arr.shape)
     check_state[:] = POINT_STATE_EMPYT
     tmp_indx = np.where(go_arr != 0)
     check_state[tmp_indx] = POINT_STATE_UNCHECKED
     return check_state
+
 
 def go_judege(go_arr):
     '''
@@ -212,7 +213,7 @@ def __get_surrounding(go_arr, point):
     if j < go_arr.shape[1] - 1:
         down_pos = (i, j + 1)
         neighbors.append(down_pos)
-    
+
     return neighbors
 
 
@@ -282,37 +283,40 @@ def __get_qi_set(go_arr, point, check_state, color_type):
 
     return qi_pos
 
+
 def __remove_block(go_arr, pos, color):
-    block = [pos,]
+    block = [pos, ]
     while block:
         cur_pos = block.pop()
         go_arr[cur_pos] = COLOR_NONE
-        surrounding_pos = __get_surrounding(go_arr,cur_pos)
+        surrounding_pos = __get_surrounding(go_arr, cur_pos)
         for pos in surrounding_pos:
             # print(pos)
             if go_arr[pos] == color:
                 block.append(pos)
-        
+
 
 def __get_result(go_arr, newpos):
-    surrounding_pos = __get_surrounding(go_arr,newpos)
+    surrounding_pos = __get_surrounding(go_arr, newpos)
     go_arr_copy = np.copy(go_arr)
     go_arr_copy[newpos] = COLOR_WHITE
-    
+
     # print("surround", surrounding_pos)
     for pos in surrounding_pos:
         if go_arr_copy[pos] == COLOR_BLACK:
             check_state = __init_check_state2(go_arr_copy)
             # print("check", pos, check_state)
-            alive = is_alive(check_state,go_arr_copy,pos[0],pos[1],COLOR_BLACK)
+            alive = is_alive(check_state, go_arr_copy,
+                             pos[0], pos[1], COLOR_BLACK)
             if alive == POINT_STATE_NOT_ALIVE:
                 # print("remove", pos)
                 __remove_block(go_arr_copy, pos, COLOR_BLACK)
                 check_state[:] = POINT_STATE_EMPYT
                 tmp_indx = np.where(go_arr_copy != 0)
                 check_state[tmp_indx] = POINT_STATE_UNCHECKED
-                
+
     return go_arr_copy
+
 
 def __get_state(go_arr, point, check_state, color_type):
     '''
@@ -392,18 +396,18 @@ def user_step_eat(go_arr):
     check_state = __init_check_state(go_arr)
     for i in range(go_arr.shape[0]):
         for j in range(go_arr.shape[1]):
-            if check_state[i,j, 0] == POINT_STATE_UNCHECKED:
-                if go_arr[i,j] == COLOR_BLACK:
-                    qi_pos_set = __get_qi_set(go_arr, (i,j), check_state, COLOR_BLACK)
+            if check_state[i, j, 0] == POINT_STATE_UNCHECKED:
+                if go_arr[i, j] == COLOR_BLACK:
+                    qi_pos_set = __get_qi_set(
+                        go_arr, (i, j), check_state, COLOR_BLACK)
                     if qi_pos_set and len(qi_pos_set) == 1:
                         newpos = qi_pos_set.pop()
                         newpos_set.add(newpos)
     new_arr = np.copy(go_arr)
     for newpos in newpos_set:
-        new_arr = __get_result(new_arr,newpos)
-                        
+        new_arr = __get_result(new_arr, newpos)
+
     return newpos_set, new_arr
-    
 
 
 def __init_check_state(go_arr):
@@ -475,7 +479,9 @@ if __name__ == "__main__":
     problem_tag = "Default"
     ans = []
     user_arr = np.zeros([0, 0])
-    
+
+    writeout = ""
+
     # The first problem: rule checking
     problem_tag = "Problem 0: rule checking"
     go_arr = read_go('{}_0.txt'.format(file_tag))
@@ -483,6 +489,7 @@ if __name__ == "__main__":
     chess_rule_monitor = go_judege(go_arr)
     print("{}:{}".format(problem_tag, chess_rule_monitor))
     plot_go(go_arr, '{}=>{}'.format(problem_tag, chess_rule_monitor))
+    writeout += 'train_0\n{}\n\n'.format(chess_rule_monitor)
 
     problem_tag = "Problem 00: rule checking"
     go_arr = read_go('{}_00.txt'.format(file_tag))
@@ -490,17 +497,22 @@ if __name__ == "__main__":
     chess_rule_monitor = go_judege(go_arr)
     print("{}:{}".format(problem_tag, chess_rule_monitor))
     plot_go(go_arr, '{}=>{}'.format(problem_tag, chess_rule_monitor))
-    
+    writeout += 'train_00\n{}\n\n'.format(chess_rule_monitor)
+
     # The second~fifth prolbem: forward one step and eat the adverse points on the chessboard
     for i in range(1, 5):
         problem_tag = "Problem {}: forward one step".format(i)
         go_arr = read_go('{}_{}.txt'.format(file_tag, i))
         plot_go(go_arr, problem_tag)
         chess_rule_monitor = go_judege(go_arr)
-        ans, user_arr = user_step_eat(go_arr) # need finish
+        ans, user_arr = user_step_eat(go_arr)  # need finish
         print("{}:{}".format(problem_tag, ans))
         plot_go(user_arr, '{}=>{}'.format(problem_tag, chess_rule_monitor))
-    
+        tmp = ""
+        for p in ans:
+            tmp += '{} {}\n'.format(p[0], p[1])
+        writeout += '{}_{}\n{}\n'.format(file_tag, i,tmp)
+
     # The sixth problem: find all the postion which can place a white chess pieces
     problem_tag = "Problem {}: all possible position".format(5)
     go_arr = read_go('{}_{}.txt'.format(file_tag, 5))
@@ -509,3 +521,14 @@ if __name__ == "__main__":
     ans = user_setp_possible(go_arr)  # need finish
     print("{}:{}".format(problem_tag, ans))
     plot_go(go_arr, '{}=>{}'.format(problem_tag, chess_rule_monitor))
+    tmp = ""
+    for p in ans:
+        tmp += '{} {}\n'.format(p[0], p[1])
+    writeout += '{}_{}\n{}'.format(file_tag, 5,tmp)
+
+    fileid = open("answer.txt", mode='w')
+    try:
+        fileid.write(writeout)
+    except IOError as identifier:
+        print("Error writing the file.!")
+    fileid.close()
