@@ -8,6 +8,7 @@ reference: https://www.python-course.eu/graphs_python.php
 """
 from collections import defaultdict
 import numpy as np
+from itertools import tee, izip
 
 class Graph(object):
 
@@ -23,7 +24,23 @@ class Graph(object):
         self.shortest_paths_data = defaultdict(dict)
         self.total_demand = 0
         self.tasks = set()
+        self.tasks_unique = set()
+    def get_tasks_unique(self):
+        return self.tasks_unique
 
+    @staticmethod
+    def pairwise(iterable):
+        "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+        a, b = tee(iterable)
+        next(b, None)
+        return izip(a, b)
+    
+    @staticmethod
+    def calculate_path_cost(graph, path):
+        cost = 0
+        for edge in Graph.pairwise(path):
+            cost += graph[edge[0]][edge[1]]['cost']
+        return cost
     def load_from_data(self, data):
         '''
         ::param: data: numpy array
@@ -36,6 +53,7 @@ class Graph(object):
                 self.tasks.add(tuple([rec[1],rec[0]]))
                 self.add_edge_attr(rec[0:2], 'demand', rec[3])
                 self.total_demand += rec[3]
+                self.tasks_unique.add(Graph.__get_unique_edge(rec[0:2]))
             
     def get_total_demand(self):
         return self.totoal_demand
@@ -45,7 +63,7 @@ class Graph(object):
         if edge[0] > edge[1]:
             return (edge[1], edge[0])
         else:
-            return edge
+            return tuple(edge)
     
     def add_edge_attr(self, edge, attrname, value):
         """
@@ -205,7 +223,7 @@ class Graph(object):
                         dist[i][j] = dist[i][k] + dist[k][j]
                         next_edge[i][j] = next_edge[i][k]
         self.shortest_paths_next = next_edge
-            
+     
         
     def get_shortest_path(self, source, target):
         '''
@@ -213,7 +231,11 @@ class Graph(object):
         '''
         edge = Graph.__get_unique_edge((source, target))
         if edge in self.shortest_paths_data.keys():
-            return self.shortest_paths_data[edge]
+            path = self.shortest_paths_data[edge]
+            if source <= target:
+                return path
+            else:
+                return (path[0][::-1],path[1])
         if self.shortest_paths_next == None:
             self.__calculate_all_shortest_path()
         if source == target:
@@ -226,11 +248,16 @@ class Graph(object):
             return path, -1
         if target not in self.shortest_paths_next[source].keys():
             return path, -1
-        path.append(source)
-        while source!=target:
-            tmp = source
-            source = self.shortest_paths_next[source][target]
-            length += self.__graph_dict[tmp][source]['cost']
-            path.append(source)
+        source_tmp = edge[0]
+        target = edge[1]
+        path.append(source_tmp)
+        while source_tmp!=target:
+            tmp = source_tmp
+            source_tmp = self.shortest_paths_next[source_tmp][target]
+            length += self.__graph_dict[tmp][source_tmp]['cost']
+            path.append(source_tmp)
         self.shortest_paths_data[edge] = (path,length)
-        return (path, length)
+        if source < target:
+            return (path, length)
+        else:
+            return (path[::-1],length)
