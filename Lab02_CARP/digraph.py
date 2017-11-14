@@ -198,13 +198,11 @@ class DiGraph(object):
 
         path = list()
         length = 0
-        print(edge[0])
-        print(edge[1])
         if edge[0] not in self.shortest_paths_next.keys():
-            print("gg1")
+            # print("gg1", edge)
             return path, -1
         if edge[1] not in self.shortest_paths_next[edge[0]].keys():
-            print("gg2",self.shortest_paths_next[edge[0]] )
+            # print("gg2",self.shortest_paths_next[edge[0]] )
             return path, -1
         source_tmp = edge[0]
         target = edge[1]
