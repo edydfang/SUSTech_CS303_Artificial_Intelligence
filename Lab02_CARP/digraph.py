@@ -1,16 +1,15 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
-""" A Python Class
+""" A Directed graph Class
 A simple Python graph class, demonstrating the essential 
 facts and functionalities of graphs.
 reference: https://www.python-course.eu/graphs_python.php
 """
 from collections import defaultdict
-import numpy as np
 from itertools import tee, izip
 
-class Graph(object):
+class DiGraph(object):
 
     def __init__(self, graph_dict=None):
         """ initializes a graph object 
@@ -22,18 +21,7 @@ class Graph(object):
         self.__graph_dict = graph_dict
         self.shortest_paths_next = None
         self.shortest_paths_data = defaultdict(dict)
-        self.total_demand = 0
-        self.tasks = set()
-        self.tasks_unique = set()
-    def get_tasks_unique(self):
-        return self.tasks_unique
 
-    @staticmethod
-    def get_unique_edge(edge):
-        if edge[0] > edge[1]:
-            return (edge[1], edge[0])
-        else:
-            return tuple(edge)
         
     @staticmethod
     def pairwise(iterable):
@@ -48,30 +36,12 @@ class Graph(object):
         for edge in Graph.pairwise(path):
             cost += graph[edge[0]][edge[1]]['cost']
         return cost
-    def load_from_data(self, data):
-        '''
-        ::param: data: numpy array
-        '''
-        for rec in data:
-            self.add_edge(rec[0:2])
-            self.add_edge_attr(rec[0:2], 'cost', rec[2])
-            if rec[3]>0:
-                self.tasks.add(tuple(rec[0:2]))
-                self.tasks.add(tuple([rec[1],rec[0]]))
-                self.add_edge_attr(rec[0:2], 'demand', rec[3])
-                self.total_demand += rec[3]
-                self.tasks_unique.add(Graph.get_unique_edge(rec[0:2]))
-            
-    def get_total_demand(self):
-        return self.totoal_demand
-        
     
     def add_edge_attr(self, edge, attrname, value):
         """
         add attribute to some edge
         """
         self.__graph_dict[edge[0]][edge[1]][attrname] = value
-        self.__graph_dict[edge[1]][edge[0]][attrname] = value
     
     def __getitem__(self, key):
         if key in self.__graph_dict.keys():
@@ -106,22 +76,14 @@ class Graph(object):
             between two vertices can be multiple edges! 
            undirected edges
         """
-        edge = set(edge)
-        vertex1 = edge.pop()
-        if edge:
-            # not a loop
-            vertex2 = edge.pop()
-        else:
-            # a loop
-            vertex2 = vertex1
+        vertex1 = edge[0]
+        vertex2 = edge[1]
         if vertex1 in self.__graph_dict:
             self.__graph_dict[vertex1][vertex2] = dict()
         else:
             self.__graph_dict[vertex1] = {vertex2:dict()}
-        if vertex2 in self.__graph_dict:
-            self.__graph_dict[vertex2][vertex1] = dict()
-        else:
-            self.__graph_dict[vertex2] = {vertex1:dict()}
+        if vertex2 not in self.__graph_dict:
+            self.__graph_dict[vertex2] = dict()
 
     def __generate_edges(self):
         """ A static method generating the edges of the 
@@ -144,9 +106,6 @@ class Graph(object):
         for edge in self.__generate_edges():
             res += str(edge) + " "
         return res
-    
-    def get_tasks(self):
-        return self.tasks
 
     def find_path(self, start_vertex, end_vertex, path=[]):
         """ find a path from start_vertex to end_vertex 
@@ -226,28 +185,26 @@ class Graph(object):
         self.shortest_paths_next = next_edge
      
         
-    def get_shortest_path(self, source, target):
+    def get_shortest_path(self, edge):
         '''
         get certian shortest path
         '''
-        edge = Graph.get_unique_edge((source, target))
         if edge in self.shortest_paths_data.keys():
             path = self.shortest_paths_data[edge]
-            if source <= target:
-                return path
-            else:
-                return (path[0][::-1],path[1])
+            return path
+
         if self.shortest_paths_next == None:
             self.__calculate_all_shortest_path()
-        if source == target:
-            path, length = [],0
-            self.shortest_paths_data[edge] = (path, length)
-            return (path, length)
+
         path = list()
         length = 0
-        if source not in self.shortest_paths_next.keys():
+        print(edge[0])
+        print(edge[1])
+        if edge[0] not in self.shortest_paths_next.keys():
+            print("gg1")
             return path, -1
-        if target not in self.shortest_paths_next[source].keys():
+        if edge[1] not in self.shortest_paths_next[edge[0]].keys():
+            print("gg2",self.shortest_paths_next[edge[0]] )
             return path, -1
         source_tmp = edge[0]
         target = edge[1]
@@ -258,7 +215,4 @@ class Graph(object):
             length += self.__graph_dict[tmp][source_tmp]['cost']
             path.append(source_tmp)
         self.shortest_paths_data[edge] = (path,length)
-        if source < target:
-            return (path, length)
-        else:
-            return (path[::-1],length)
+        return (path, length)
