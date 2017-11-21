@@ -3,14 +3,9 @@ Solver for CARP
 '''
 from collections import defaultdict
 from itertools import tee, izip
+import random
 from random import shuffle
 import copy
-import random
-import numpy as np
-
-import utils.graph
-import utils.digraph
-
 from utils.graph import Graph
 from utils.digraph import DiGraph
 
@@ -89,6 +84,7 @@ class Solver(object):
                 if child == P[b]['chromesome']:
                     self.mutation(P[a])
             n_iteration += 1
+        print(x_bsf)
         return x_bsf
         # print(P)
 
@@ -552,4 +548,5 @@ class Solver(object):
             cost_total += self.gf.get_shortest_path(
                 route[-1][1], self.depot)[1]
             costlist.append(cost_total)
+        #print(sum(loadlist))
         return loadlist, costlist, cost_total, sum(loadlist)
