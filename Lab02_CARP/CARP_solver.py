@@ -6,12 +6,23 @@ This Program is used to solve the CARP problem in a limited time.
 import argparse
 import numpy as np
 from utils.solver import Solver
+from utils.graph import Graph
+import Queue as q2
+from multiprocessing import Process, Queue
+from threading import Thread
+import threading
+import os
+import time
+
+
+N_PROCESSORS = 2
 
 
 def main():
     '''
     main entrance
     '''
+    start = time.time()
     parser = argparse.ArgumentParser(
         description='Find Solutions for CARP Problem\nCoded by Edward FANG')
     parser.add_argument('instance', type=argparse.FileType('r'),
@@ -26,12 +37,84 @@ def main():
     instance_file = args.instance
     # print(time_limit, seed)
     spec, data = read_instance_file(instance_file)
-    solver1 = Solver(data, spec, time_limit, seed)
-    solver1.solve()
-    # print(spec, data)
-    # args.instance[0], args.s[0], args.t[0]
+    network = Graph()
+    network.load_from_data(data.tolist())
+    solvers = list()
+    solution_receiver = Queue()
+    best_solution = [None, float('inf')]
+    thread1 = solution_updater(
+        solution_receiver, best_solution)
+    thread1.start()
+    # multi processors processing
+    for idx in range(N_PROCESSORS):
+        proc = Process(target=start_solver, args=(
+            network, spec, time_limit, seed + str(idx), solution_receiver))
+        solvers.append(proc)
+        proc.start()
+        # run_time = (time.time() - start)
 
-def read_instance_file(fd):
+    # start a thread for timing
+    thread2 = Thread(target=time_up_sig, args=(time_limit, start, solvers))
+    thread2.daemon = True
+    thread2.start()
+    # exit
+    for proc in solvers:
+        proc.join()
+    thread1.stop()
+    print("best", best_solution)
+
+
+def time_up_sig(time_limit, start_time, solvers):
+    '''
+    terminate all procs when time is running out
+    '''
+    print(time.time() - start_time)
+    time.sleep(time_limit - 0.3)
+
+    for solver in solvers:
+        solver.terminate()
+    return
+
+
+class solution_updater(threading.Thread):
+    """Thread class with a stop() method. The thread itself has to check
+    regularly for the stopped() condition."""
+
+    def __init__(self, solution_receiver, best):
+        super(solution_updater, self).__init__()
+        self._stop_event = threading.Event()
+        self.solution_receiver = solution_receiver
+        self.best = best
+
+    def run(self):
+        while not self._stop_event.is_set():
+            try:
+                new_solution = self.solution_receiver.get(
+                    block=True, timeout=0.1)
+                print(new_solution)
+                if new_solution[1] < self.best[1]:
+                    self.best = new_solution
+                    print("better", self.best)
+            except q2.Empty:
+                continue
+
+
+    def stop(self):
+        self._stop_event.set()
+
+    def stopped(self):
+        return self._stop_event.is_set()
+
+
+def start_solver(network, spec, time_limit, seed, best_solution):
+    '''
+    function to start new process
+    '''
+    solver = Solver(network, spec, time_limit, seed, best_solution)
+    solver.solve()
+
+
+def read_instance_file(filedesc):
     '''
     ::param: filename: string, filename that indicates the location of instance data file
     ::return value: (specification, data)
@@ -39,8 +122,8 @@ def read_instance_file(fd):
     :: data: the numpy array with a list of edges and their cost, demand
     :: data: [vertex1 vertex2 cost demand]
     '''
-    content = fd.readlines()
-    content = [x.strip() for x in content] 
+    content = filedesc.readlines()
+    content = [x.strip() for x in content]
     specification = dict()
     for i in range(8):
         line = content[i].split(':')
@@ -51,9 +134,21 @@ def read_instance_file(fd):
         tmp = line.split()
         data.append([int(x.strip()) for x in tmp])
     data = np.array(data)
-    fd.close()
+    filedesc.close()
     return specification, data
 
 
 if __name__ == '__main__':
     main()
+
+# def solution_to_string(partitioned_solution, graph):
+#     result = 's '
+#     for route in partitioned_solution:
+#         result+='0,'
+#         for task in route:
+#             result+='(%d,%d),' % task
+#         result+='0,'
+#     cost_total = solution_verify(partitioned_solution, graph)[2]
+#     result = result[:-1] + '\n'
+#     result += 'q %d' % cost_total
+#     return result

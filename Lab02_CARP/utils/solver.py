@@ -6,27 +6,40 @@ from itertools import tee, izip
 import random
 from random import shuffle
 import copy
-from utils.graph import Graph
+import os
 from utils.digraph import DiGraph
-
+from utils.graph import Graph
+from multiprocessing import Process, Queue
 
 class Solver(object):
     '''
     A solver class
     '''
 
-    def __init__(self, data, spec, time_limit, seed):
-        self.gf = Graph()
-        self.gf.load_from_data(data.tolist())
+    def __init__(self, graph, spec, time_limit, seed, solution_receiver):
+        self.solution_receiver = solution_receiver
+        self.x_bsf = (-1, float('inf'))
+        self.gf = graph
         self.time_limit = time_limit
         self.seed = seed
         self.capacity = int(spec['CAPACITY'])
         self.depot = int(spec['DEPOT'])
         self.time_limit = time_limit
-        if not self.seed:
+        if self.seed:
             random.seed(self.seed)
 
+    def update_bsf(self, solution_id, fitness):
+        '''
+        get the new solution known to main process
+        '''
+        if self.x_bsf[1] > fitness:
+            self.x_bsf = (solution_id, fitness)
+            self.solution_receiver.put([solution_id, fitness])
+            #print(self.x_bsf)
+
+
     def solve(self):
+        print('Run child process %s...' % os.getpid())
         init_solution1 = self.path_scanning()
         init_solution2 = self.augment_merge()
         p1 = self.ps_to_chromesome(init_solution1)
@@ -35,34 +48,38 @@ class Solver(object):
         ps = 20
         # seq = list(range(20))
         P = defaultdict(dict)
-        MAX_ITERATION = 1000
+        MAX_ITERATION = 500
         MAX_RESTART = 10
         n_iteration = 0
-        x_bsf = (-1, float('inf'))
+        
         P[0]['chromesome'] = p1
         P[0]['partition'] = self.chromesome_partition(p1)
         fitness = self.solution_verify(P[0]['partition'])[2]
         P[0]['fitness'] = fitness
+        self.update_bsf(0,fitness)
+        '''
         if x_bsf[1] > fitness:
             x_bsf = (0, fitness)
             print(x_bsf)
+        '''
         P[1]['chromesome'] = p2
         P[1]['partition'] = self.chromesome_partition(p1)
         fitness = self.solution_verify(P[1]['partition'])[2]
         P[1]['fitness'] = fitness
-        if x_bsf[1] > fitness:
-            x_bsf = (1, fitness)
-            print(x_bsf)
+        self.update_bsf(1,fitness)
+        # if x_bsf[1] > fitness:
+        #     x_bsf = (1, fitness)
+        #     print(x_bsf)
         for x in range(2, 2 + ps_random):
             p = self.ps_to_chromesome(self.path_scanning())
             # p = self.random_init()
             P[x]['chromesome'] = p
             P[x]['partition'] = self.chromesome_partition(p)
             P[x]['fitness'] = self.solution_verify(P[x]['partition'])[2]
-            # print(p)
-            if x_bsf[1] > P[x]['fitness']:
-                x_bsf = (x, P[x]['fitness'])
-                print(x_bsf)
+            self.update_bsf(x,P[x]['fitness'])
+            # if x_bsf[1] > P[x]['fitness']:
+            #     x_bsf = (x, P[x]['fitness'])
+            #     print(x_bsf)
         while n_iteration < MAX_ITERATION:
             a, b = random.sample(xrange(ps), 2)
             if P[a]['fitness'] < P[b]['fitness']:
@@ -77,15 +94,15 @@ class Solver(object):
                 P[a]['chromesome'] = child
                 P[a]['partition'] = new_partition
                 P[a]['fitness'] = new_fitness
-                print(new_fitness)
-                if new_fitness < x_bsf[1]:
-                    print(x_bsf)
-                    x_bsf = (a, new_fitness)
+                # print(new_fitness)
+                self.update_bsf(a,new_fitness)
+                # if new_fitness < x_bsf[1]:
+                #     print(x_bsf)
+                #     x_bsf = (a, new_fitness)
                 if child == P[b]['chromesome']:
                     self.mutation(P[a])
             n_iteration += 1
-        print(x_bsf)
-        return x_bsf
+        return
         # print(P)
 
     def mutation(self, idv):
@@ -425,7 +442,7 @@ class Solver(object):
         '''
         transform the solution from chromesome format to partitioned solution optimally
         input: chromesome and graph
-        output: 
+        output:
         '''
         # generate Auxiliary graph
         aux_graph = DiGraph()
@@ -433,7 +450,6 @@ class Solver(object):
         end_cost = list()
         arc_cost = dict()
         aq_edges = list()
-        edge_demand = list()
         pre_task = -1
         for idx, task in enumerate(chromesome):
             start_cost.append(
