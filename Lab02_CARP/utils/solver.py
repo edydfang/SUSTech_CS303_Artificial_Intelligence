@@ -48,7 +48,7 @@ class Solver(object):
         ps = 20
         # seq = list(range(20))
         P = defaultdict(dict)
-        MAX_ITERATION = 500
+        MAX_ITERATION = 5000
         MAX_RESTART = 10
         n_iteration = 0
         
@@ -102,12 +102,14 @@ class Solver(object):
                 if child == P[b]['chromesome']:
                     self.mutation(P[a])
             n_iteration += 1
+            if n_iteration % 100 == 0:
+                print(n_iteration)
         return
         # print(P)
 
     def mutation(self, idv):
         a, b = random.sample(xrange(len(idv['chromesome'])), 2)
-        print('mutation', a, b)
+        # print('mutation', a, b)
         tmp = idv['chromesome'][a]
         idv['chromesome'][a] = idv['chromesome'][b]
         idv['chromesome'][b] = tmp

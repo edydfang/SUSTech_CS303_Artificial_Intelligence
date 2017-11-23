@@ -26,7 +26,7 @@ class bestSolution(object):
         if new_solution[1] < self.fitness:
             self.fitness = new_solution[1]
             self.best_solution = new_solution[0]
-            # print("better", new_solution)
+            print("update", self.fitness)
     
     def __str__(self):
         result = 's '
