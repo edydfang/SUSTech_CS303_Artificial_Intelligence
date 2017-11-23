@@ -28,18 +28,18 @@ class Solver(object):
         if self.seed:
             random.seed(self.seed)
 
-    def update_bsf(self, solution_id, fitness):
+    def update_bsf(self, population, solution_id, fitness):
         '''
         get the new solution known to main process
         '''
         if self.x_bsf[1] > fitness:
             self.x_bsf = (solution_id, fitness)
-            self.solution_receiver.put([solution_id, fitness])
-            #print(self.x_bsf)
+            self.solution_receiver.put([population[solution_id]['partition'], fitness])
+            # print(self.x_bsf)
 
 
     def solve(self):
-        print('Run child process %s...' % os.getpid())
+        # print('Run child process %s...' % os.getpid())
         init_solution1 = self.path_scanning()
         init_solution2 = self.augment_merge()
         p1 = self.ps_to_chromesome(init_solution1)
@@ -56,7 +56,7 @@ class Solver(object):
         P[0]['partition'] = self.chromesome_partition(p1)
         fitness = self.solution_verify(P[0]['partition'])[2]
         P[0]['fitness'] = fitness
-        self.update_bsf(0,fitness)
+        self.update_bsf(P, 0,fitness)
         '''
         if x_bsf[1] > fitness:
             x_bsf = (0, fitness)
@@ -66,7 +66,7 @@ class Solver(object):
         P[1]['partition'] = self.chromesome_partition(p1)
         fitness = self.solution_verify(P[1]['partition'])[2]
         P[1]['fitness'] = fitness
-        self.update_bsf(1,fitness)
+        self.update_bsf(P, 1,fitness)
         # if x_bsf[1] > fitness:
         #     x_bsf = (1, fitness)
         #     print(x_bsf)
@@ -76,7 +76,7 @@ class Solver(object):
             P[x]['chromesome'] = p
             P[x]['partition'] = self.chromesome_partition(p)
             P[x]['fitness'] = self.solution_verify(P[x]['partition'])[2]
-            self.update_bsf(x,P[x]['fitness'])
+            self.update_bsf(P, x,P[x]['fitness'])
             # if x_bsf[1] > P[x]['fitness']:
             #     x_bsf = (x, P[x]['fitness'])
             #     print(x_bsf)
@@ -95,7 +95,7 @@ class Solver(object):
                 P[a]['partition'] = new_partition
                 P[a]['fitness'] = new_fitness
                 # print(new_fitness)
-                self.update_bsf(a,new_fitness)
+                self.update_bsf(P, a,new_fitness)
                 # if new_fitness < x_bsf[1]:
                 #     print(x_bsf)
                 #     x_bsf = (a, new_fitness)
