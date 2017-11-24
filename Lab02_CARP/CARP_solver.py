@@ -15,7 +15,7 @@ import os
 import time
 
 
-N_PROCESSORS = 2
+N_PROCESSORS = 1
 
 class bestSolution(object):
     def __init__(self):
@@ -70,7 +70,7 @@ def main():
     # multi processors processing
     for idx in range(N_PROCESSORS):
         proc = Process(target=start_solver, args=(
-            network, spec, time_limit, seed + str(idx), solution_receiver))
+            network, spec, seed + str(idx), solution_receiver))
         solvers.append(proc)
         proc.start()
         # run_time = (time.time() - start)
@@ -126,11 +126,11 @@ class solution_updater(threading.Thread):
         return self._stop_event.is_set()
 
 
-def start_solver(network, spec, time_limit, seed, best_solution):
+def start_solver(network, spec, seed, best_solution):
     '''
     function to start new process
     '''
-    solver = Solver(network, spec, time_limit, seed, best_solution)
+    solver = Solver(network, spec, seed, best_solution)
     solver.solve()
 
 
