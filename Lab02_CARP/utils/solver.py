@@ -34,10 +34,8 @@ class Solver(object):
         if self.x_bsf[1] > idv['fitness']:
             self.x_bsf = [idv['partition'], idv['fitness']]
             self.solution_receiver.put(self.x_bsf)
-            # print(self.x_bsf)
 
     def solve(self):
-        # print('Run child process %s...' % os.getpid())
         init_solution2 = self.augment_merge()
         #p1 = self.ps_to_idv(init_solution1)
         p_augment_merge = self.am_to_chromesome(init_solution2)
@@ -66,7 +64,6 @@ class Solver(object):
             P[0]['cost'] = quality[1]
             P[x]['fitness'] = quality[2]
             self.update_bsf(P[x])
-            print(P[x]['fitness'])
         while n_iteration < MAX_ITERATION:
             # step1: random select two parent
             a, b = random.sample(xrange(ps), 2)
@@ -96,8 +93,7 @@ class Solver(object):
                 if child == P[b]['chromesome']:
                     self.mutation(P[a])
             n_iteration += 1
-            if n_iteration % 100 == 0:
-                print(n_iteration)
+
         return
 
     @staticmethod
@@ -139,11 +135,10 @@ class Solver(object):
                 del tmp1[idx1][idx2]
                 for idx3, trip2 in enumerate(tmp1):
                     # judge load before insert
-                    if idx3!=idx1 and idv['load'][idx3] + load_task > self.capacity:
+                    if idx3 != idx1 and idv['load'][idx3] + load_task > self.capacity:
                         continue
                     last_task2 = len(trip2)
                     for idx4 in range(len(trip2) + 1):
-                        # print(trip2, idx4)
                         if idx4 == 0:
                             prev_p = self.depot
                         else:
@@ -153,7 +148,7 @@ class Solver(object):
                         else:
                             next_p = trip2[idx4][0]
                         # nomal insert
-                        
+
                         cost1 = self.gf.get_shortest_path(prev_p, task[0])[1]
                         cost2 = self.gf.get_shortest_path(task[1], next_p)[1]
                         cost3 = self.gf.get_shortest_path(prev_p, next_p)[1]
@@ -168,8 +163,9 @@ class Solver(object):
                             idv['load'][idx1] -= load_task
                             idv['load'][idx3] += load_task
                             idv['fitness'] = newfitness
+                            idv['chromesome'] = self.route_to_chromesome(tmp2)
                             return (True, idv)
-                        
+
                         # inverse insert
                         cost1 = self.gf.get_shortest_path(prev_p, task[1])[1]
                         cost2 = self.gf.get_shortest_path(task[0], next_p)[1]
@@ -180,16 +176,19 @@ class Solver(object):
                             tmp2[idx3].insert(idx4, task[::-1])
                             newfitness = idv['fitness'] - save_cost2
                             idv['partition'] = tmp2
-                            idv['cost'][idx1] -= save_cost1 + self.gf[task[0]][task[1]]['cost']
-                            # print(save_cost1, save_cost2, idx1, idx3)
-                            idv['cost'][idx3] += save_cost1 - save_cost2 + self.gf[task[0]][task[1]]['cost']
+                            idv['cost'][idx1] -= save_cost1 + \
+                                self.gf[task[0]][task[1]]['cost']
+                            idv['cost'][idx3] += save_cost1 - \
+                                save_cost2 + self.gf[task[0]][task[1]]['cost']
                             idv['load'][idx1] -= load_task
                             idv['load'][idx3] += load_task
                             idv['fitness'] = newfitness
+                            idv['chromesome'] = Solver.route_to_chromesome(
+                                tmp2)
                             return (True, idv)
         return (False, None)
 
-    def method_swap(self, idv):
+ 
         '''
         swap two tasks
         need to add inverse insert
@@ -200,6 +199,8 @@ class Solver(object):
         for idx1, trip in enumerate(route):
             last_task = len(trip) - 1
             for idx2, task1 in enumerate(trip):
+                load_task1 = self.gf[task1[0]][task1[1]]['demand']
+                cost_task1 = self.gf[task1[0]][task1[1]]['cost']
                 if idx2 == 0:
                     prev_p1 = self.depot
                 else:
@@ -217,6 +218,7 @@ class Solver(object):
                 idx3 = idx1
                 if idx2 + 2 <= last_task:
                     for offset, task2 in enumerate(trip[idx2 + 2:]):
+                        continue
                         # only for that trip, skip the consecutive task
                         idx4 = idx2 + offset + 2
                         prev_p2 = trip[idx4 - 1][1]
@@ -242,15 +244,22 @@ class Solver(object):
                             tmp2[idx1].insert(idx2, task2)
                             del tmp2[idx3][idx4]
                             tmp2[idx3].insert(idx4, task1)
-                            newfitness = idv['fitness'] - final_save
-                            #print("good", cost01, cost02, cost03 ,save_cost1, save_cost2, cost1,cost2,cost3, prev_p, next_p)
-                            count += 1
-                            return (True, tmp2, newfitness)
+                            idv['fitness'] = idv['fitness'] - final_save
+                            idv['partition'] = tmp2
+                            idv['cost'][idx1] -= final_save
+                            idv['chromesome'] = Solver.route_to_chromesome(
+                                tmp2)
+                            return (True, idv)
+
                 for offset, trip2 in enumerate(tmp1[idx1 + 1:]):
                     idx3 = offset + idx1 + 1
                     last_task2 = len(trip2) - 1
                     for idx4, task2 in enumerate(trip2):
-                        # print(trip2, idx4)
+                        load_task2 = self.gf[task2[0]][task2[1]]['demand']
+                        cost_task2 = self.gf[task2[0]][task2[1]]['cost']
+                        if idv['load'][idx3] - load_task2 + load_task1 > self.capacity \
+                                or idv['load'][idx1] - load_task1 + load_task2 > self.capacity:
+                            continue
                         if idx4 == 0:
                             prev_p2 = self.depot
                         else:
@@ -259,6 +268,145 @@ class Solver(object):
                             next_p2 = self.depot
                         else:
                             next_p2 = trip2[idx4 + 1][0]
+
+                        cost1 = self.gf.get_shortest_path(prev_p2, task2[0])[1]
+                        cost2 = self.gf.get_shortest_path(task2[1], next_p2)[1]
+                        scost2 = cost1 + cost2
+
+                        # normal swap
+                        cost11 = self.gf.get_shortest_path(
+                            prev_p1, task2[0])[1]
+                        cost12 = self.gf.get_shortest_path(
+                            task2[1], next_p1)[1]
+                        cost21 = self.gf.get_shortest_path(
+                            prev_p2, task1[0])[1]
+                        cost22 = self.gf.get_shortest_path(
+                            task1[1], next_p2)[1]
+                        final_save = scost1 + scost2 - cost11 - cost12 - cost21 - cost22
+
+                        if final_save > 0:
+                            tmp2 = Solver.copy_partition(tmp1)
+                            tmp2[idx1].insert(idx2, task2)
+                            del tmp2[idx3][idx4]
+                            tmp2[idx3].insert(idx4, task1)
+                            idv['fitness'] = idv['fitness'] - final_save
+                            idv['partition'] = tmp2
+                            idv['cost'][idx1] += cost_task2 + \
+                                cost11 + cost12 - scost1
+                            idv['cost'][idx3] += cost_task1 + \
+                                cost21 + cost22 - scost2
+                            idv['load'][idx1] += load_task2 - load_task1
+                            idv['load'][idx3] += load_task1 - load_task2
+                            idv['chromesome'] = Solver.route_to_chromesome(
+                                tmp2)
+                            return (True, idv)
+                        # inverse first
+                        cost31 = self.gf.get_shortest_path(
+                            prev_p1, task2[1])[1]
+                        cost32 = self.gf.get_shortest_path(
+                            task2[0], next_p1)[1]
+                        final_save = scost1 + scost2 - cost31 - cost32 - cost21 - cost22
+                        if final_save > 0:
+                            tmp2 = Solver.copy_partition(tmp1)
+                            tmp2[idx1].insert(idx2, task2[::-1])
+                            del tmp2[idx3][idx4]
+                            tmp2[idx3].insert(idx4, task1)
+                            idv['fitness'] = idv['fitness'] - final_save
+                            idv['partition'] = tmp2
+                            idv['cost'][idx1] += cost_task2 + \
+                                cost31 + cost32 - scost1
+                            idv['cost'][idx3] += cost_task1 + \
+                                cost21 + cost22 - scost2
+                            idv['load'][idx1] += load_task2 - load_task1
+                            idv['load'][idx3] += load_task1 - load_task2
+                            idv['chromesome'] = Solver.route_to_chromesome(
+                                tmp2)
+                            return (True, idv)
+                        # inverse second
+                        cost41 = self.gf.get_shortest_path(
+                            prev_p2, task1[1])[1]
+                        cost42 = self.gf.get_shortest_path(
+                            task1[0], next_p2)[1]
+                        final_save = scost1 + scost2 - cost11 - cost12 - cost41 - cost42
+                        if final_save > 0:
+                            tmp2 = Solver.copy_partition(tmp1)
+                            tmp2[idx1].insert(idx2, task2)
+                            del tmp2[idx3][idx4]
+                            tmp2[idx3].insert(idx4, task1[::-1])
+                            idv['fitness'] = idv['fitness'] - final_save
+                            idv['partition'] = tmp2
+                            idv['cost'][idx1] += cost_task2 + \
+                                cost11 + cost12 - scost1
+                            idv['cost'][idx3] += cost_task1 + \
+                                cost41 + cost42 - scost2
+                            idv['load'][idx1] += load_task2 - load_task1
+                            idv['load'][idx3] += load_task1 - load_task2
+                            idv['chromesome'] = Solver.route_to_chromesome(
+                                tmp2)
+                            return (True, idv)
+                        # inverse both
+                        cost41 = self.gf.get_shortest_path(
+                            prev_p2, task1[1])[1]
+                        cost42 = self.gf.get_shortest_path(
+                            task1[0], next_p2)[1]
+                        final_save = scost1 + scost2 - cost31 - cost32 - cost41 - cost42
+                        if final_save > 0:
+                            tmp2 = Solver.copy_partition(tmp1)
+                            tmp2[idx1].insert(idx2, task2[::-1])
+                            del tmp2[idx3][idx4]
+                            tmp2[idx3].insert(idx4, task1[::-1])
+                            idv['fitness'] = idv['fitness'] - final_save
+                            idv['partition'] = tmp2
+                            idv['cost'][idx1] += cost_task2 + \
+                                cost31 + cost32 - scost1
+                            idv['cost'][idx3] += cost_task1 + \
+                                cost41 + cost42 - scost2
+                            idv['load'][idx1] += load_task2 - load_task1
+                            idv['load'][idx3] += load_task1 - load_task2
+                            idv['chromesome'] = Solver.route_to_chromesome(
+                                tmp2)
+                            return (True, idv)
+
+        return (False, None)
+
+    def method_swap(self, idv):
+        '''
+        swap two tasks
+        need to add inverse insert
+        '''
+        route = idv['partition']
+        count = 0
+        total_time = 0
+        for idx1, trip in enumerate(route):
+            last_task = len(trip) - 1
+            for idx2, task1 in enumerate(trip):
+                load_task1 = self.gf[task1[0]][task1[1]]['demand']
+                cost_task1 = self.gf[task1[0]][task1[1]]['cost']
+                if idx2 == 0:
+                    prev_p1 = self.depot
+                else:
+                    prev_p1 = trip[idx2 - 1][1]
+                if last_task == idx2:
+                    next_p1 = self.depot
+                else:
+                    next_p1 = trip[idx2 + 1][0]
+                cost01 = self.gf.get_shortest_path(prev_p1, task1[0])[1]
+                cost02 = self.gf.get_shortest_path(task1[1], next_p1)[1]
+                scost1 = cost01 + cost02
+                tmp1 = Solver.copy_partition(route)
+                del tmp1[idx1][idx2]
+                # find another task
+                idx3 = idx1
+                if idx2 + 2 <= last_task:
+                    for offset, task2 in enumerate(trip[idx2 + 2:]):
+                        continue
+                        # only for that trip, skip the consecutive task
+                        idx4 = idx2 + offset + 2
+                        prev_p2 = trip[idx4 - 1][1]
+                        if last_task == idx4:
+                            next_p2 = self.depot
+                        else:
+                            next_p2 = trip[idx4 + 1][0]
                         # print(prev_p, task)
                         cost1 = self.gf.get_shortest_path(prev_p2, task2[0])[1]
                         cost2 = self.gf.get_shortest_path(task2[1], next_p2)[1]
@@ -272,19 +420,123 @@ class Solver(object):
                         cost22 = self.gf.get_shortest_path(
                             task1[1], next_p2)[1]
                         final_save = scost1 + scost2 - cost11 - cost12 - cost21 - cost22
-    #                     if count % 100 == 0:
-    #                         print(count)
                         if final_save > 0:
                             tmp2 = Solver.copy_partition(tmp1)
                             tmp2[idx1].insert(idx2, task2)
                             del tmp2[idx3][idx4]
                             tmp2[idx3].insert(idx4, task1)
-                            newfitness = idv['fitness'] - final_save
-                            # print("good",task1, task2, cost01, cost02, cost03 ,save_cost1, \
-                            #      save_cost2, cost1,cost2,cost3, prev_p, next_p)
-                            count += 1
-                            return (True, tmp2, newfitness)
-        return (False, None, None)
+                            idv['fitness'] = idv['fitness'] - final_save
+                            idv['partition'] = tmp2
+                            idv['cost'][idx1] -= final_save
+                            idv['chromesome'] = Solver.route_to_chromesome(tmp2)
+                            return (True, idv)
+                        
+                for offset, trip2 in enumerate(tmp1[idx1 + 1:]):
+                    idx3 = offset + idx1 + 1
+                    last_task2 = len(trip2) - 1
+                    for idx4, task2 in enumerate(trip2):
+                        load_task2 = self.gf[task2[0]][task2[1]]['demand']
+                        cost_task2 = self.gf[task2[0]][task2[1]]['cost']
+                        if idv['load'][idx3] - load_task2 + load_task1 > self.capacity \
+                            or idv['load'][idx1] - load_task1 + load_task2 > self.capacity:
+                            continue
+                        if idx4 == 0:
+                            prev_p2 = self.depot
+                        else:
+                            prev_p2 = trip2[idx4 - 1][1]
+                        if last_task2 == idx4:
+                            next_p2 = self.depot
+                        else:
+                            next_p2 = trip2[idx4 + 1][0]
+                        
+                        cost1 = self.gf.get_shortest_path(prev_p2, task2[0])[1]
+                        cost2 = self.gf.get_shortest_path(task2[1], next_p2)[1]
+                        scost2 = cost1 + cost2
+                        
+                        # normal swap
+                        cost11 = self.gf.get_shortest_path(
+                            prev_p1, task2[0])[1]
+                        cost12 = self.gf.get_shortest_path(
+                            task2[1], next_p1)[1]
+                        cost21 = self.gf.get_shortest_path(
+                            prev_p2, task1[0])[1]
+                        cost22 = self.gf.get_shortest_path(
+                            task1[1], next_p2)[1]
+                        final_save = scost1 + scost2 - cost11 - cost12 - cost21 - cost22
+                       
+                        if final_save > 0:
+                            
+                            tmp2 = Solver.copy_partition(tmp1)
+                            tmp2[idx1].insert(idx2, task2)
+                            del tmp2[idx3][idx4]
+                            tmp2[idx3].insert(idx4, task1)
+                            idv['fitness'] = idv['fitness'] - final_save
+                            idv['partition'] = tmp2
+                            idv['cost'][idx1] += cost_task2 - cost_task1 + cost11 + cost12 - scost1
+                            idv['cost'][idx3] += cost_task1 - cost_task2 + cost21 + cost22 - scost2
+                            idv['load'][idx1] += load_task2 - load_task1
+                            idv['load'][idx3] += load_task1 - load_task2
+                            idv['chromesome'] = Solver.route_to_chromesome(tmp2)
+                            return (True, idv)
+                        
+                        # inverse first
+                        cost31 = self.gf.get_shortest_path(
+                            prev_p1, task2[1])[1]
+                        cost32 = self.gf.get_shortest_path(
+                            task2[0], next_p1)[1]
+                        final_save = scost1 + scost2 - cost31 - cost32 - cost21 - cost22
+                        if final_save > 0:
+                            tmp2 = Solver.copy_partition(tmp1)
+                            tmp2[idx1].insert(idx2, task2[::-1])
+                            del tmp2[idx3][idx4]
+                            tmp2[idx3].insert(idx4, task1)
+                            idv['fitness'] = idv['fitness'] - final_save
+                            idv['partition'] = tmp2
+                            idv['cost'][idx1] += cost_task2 - cost_task1 + cost31 + cost32 - scost1
+                            idv['cost'][idx3] += cost_task1 - cost_task2 + cost21 + cost22 - scost2
+                            idv['load'][idx1] += load_task2 - load_task1
+                            idv['load'][idx3] += load_task1 - load_task2
+                            idv['chromesome'] = Solver.route_to_chromesome(tmp2)
+                            return (True, idv)
+                        # inverse second
+                        cost41 = self.gf.get_shortest_path(
+                            prev_p2, task1[1])[1]
+                        cost42 = self.gf.get_shortest_path(
+                            task1[0], next_p2)[1]
+                        final_save = scost1 + scost2 - cost11 - cost12 - cost41 - cost42
+                        if final_save > 0:
+                            tmp2 = Solver.copy_partition(tmp1)
+                            tmp2[idx1].insert(idx2, task2)
+                            del tmp2[idx3][idx4]
+                            tmp2[idx3].insert(idx4, task1[::-1])
+                            idv['fitness'] = idv['fitness'] - final_save
+                            idv['partition'] = tmp2
+                            idv['cost'][idx1] += cost_task2 - cost_task1 + cost11 + cost12 - scost1 
+                            idv['cost'][idx3] += cost_task1 - cost_task2 + cost41 + cost42 - scost2
+                            idv['load'][idx1] += load_task2 - load_task1
+                            idv['load'][idx3] += load_task1 - load_task2
+                            idv['chromesome'] = Solver.route_to_chromesome(tmp2)
+                            return (True, idv)
+                        # inverse both
+                        cost41 = self.gf.get_shortest_path(
+                            prev_p2, task1[1])[1]
+                        cost42 = self.gf.get_shortest_path(
+                            task1[0], next_p2)[1]
+                        final_save = scost1 + scost2 - cost31 - cost32 - cost41 - cost42
+                        if final_save > 0:
+                            tmp2 = Solver.copy_partition(tmp1)
+                            tmp2[idx1].insert(idx2, task2[::-1])
+                            del tmp2[idx3][idx4]
+                            tmp2[idx3].insert(idx4, task1[::-1])
+                            idv['fitness'] = idv['fitness'] - final_save
+                            idv['partition'] = tmp2
+                            idv['cost'][idx1] += cost_task2 - cost_task1 + cost31 + cost32 - scost1
+                            idv['cost'][idx3] += cost_task1 - cost_task2 + cost41 + cost42 - scost2
+                            idv['load'][idx1] += load_task2 - load_task1
+                            idv['load'][idx3] += load_task1 - load_task2
+                            idv['chromesome'] = Solver.route_to_chromesome(tmp2)
+                            return (True, idv)
+        return (False, None)
 
     @staticmethod
     def route_to_chromesome(route):
@@ -299,28 +551,25 @@ class Solver(object):
         ::output: new individual
         '''
         tmp = idv['fitness']
-        print("local ")
         while True:
             result = self.method_move(idv)
             if not result[0]:
-                break      
+                break
             idv = result[1]
             self.update_bsf(idv)
-            print(idv['fitness'])
-        # while True:
-        #     result = self.method_swap(idv)
-        #     if not result[0]:
-        #         break
-        #     idv['partition'] = result[1]
-        #     idv['chromesome'] = Solver.route_to_chromesome(result[1])
-        #     idv['fitness'] = result[2]
+            print("local:", idv['fitness'])
+        while True:
+            result = self.method_swap(idv)
+            if not result[0]:
+                break
+            idv = result[1]
+            self.update_bsf(idv)
+            print("local:", idv['fitness'])
         return idv
-        # method_swap(idv)
-        # print(method_two_opt(idv))
 
     def mutation(self, idv):
         a, b = random.sample(xrange(len(idv['chromesome'])), 2)
-        # print('mutation', a, b)
+        print('mutation', a, b)
         tmp = idv['chromesome'][a]
         idv['chromesome'][a] = idv['chromesome'][b]
         idv['chromesome'][b] = tmp
@@ -479,8 +728,6 @@ class Solver(object):
                     if cost_largest < save_total:
                         overlapping_best = (p1, p2)
                         cost_largest = save_total
-    #     if cost_largest is 0:
-    #         print("gg", circle1, circle2, idx1, idx2)
         return circle1[:-1 - overlapping_best[0]] + circle2[overlapping_best[1]:], overlapping_best, cost_largest
 
     def get_first_last_req(self, circle):
@@ -710,7 +957,6 @@ class Solver(object):
         ind1, ind2 = copy.copy(x1), copy.copy(x2)
         size = min(len(ind1), len(ind2))
         a, b = random.sample(xrange(size), 2)
-        # print(a,b)
         if a > b:
             a, b = b, a
 
@@ -719,10 +965,7 @@ class Solver(object):
             if i < a or i > b:
                 holes1.add(Graph.get_unique_edge(ind2[i]))
                 holes2.add(Graph.get_unique_edge(ind1[i]))
-    #             holes1[ind2[i]] = False
-    #             holes2[ind1[i]] = False
 
-        # We must keep the original values somewhere before scrambling everything
         temp1, temp2 = ind1, ind2
         k1, k2 = b + 1, b + 1
         for i in range(size):

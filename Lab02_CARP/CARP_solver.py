@@ -31,6 +31,8 @@ class bestSolution(object):
     def __str__(self):
         result = 's '
         for route in self.best_solution:
+            if len(route) == 0:
+                continue
             result+='0,'
             for task in route:
                 result+='(%d,%d),' % task
@@ -69,8 +71,12 @@ def main():
     thread1.start()
     # multi processors processing
     for idx in range(N_PROCESSORS):
+        if seed:
+            unique_seed = seed + str(idx)
+        else:
+            unique_seed = None
         proc = Process(target=start_solver, args=(
-            network, spec, seed + str(idx), solution_receiver))
+            network, spec,unique_seed , solution_receiver))
         solvers.append(proc)
         proc.start()
         # run_time = (time.time() - start)
@@ -91,7 +97,7 @@ def time_up_sig(time_limit, start_time, solvers):
     terminate all procs when time is running out
     '''
     # print(time.time() - start_time)
-    time.sleep(time_limit - 0.3)
+    time.sleep(time_limit - 0.3 - time_limit*0.01)
 
     for solver in solvers:
         solver.terminate()
@@ -113,7 +119,6 @@ class solution_updater(threading.Thread):
             try:
                 new_solution = self.solution_receiver.get(
                     block=True, timeout=0.1)
-                # print(new_solution)
                 self.best_solution.update(new_solution)                   
             except q2.Empty:
                 continue
