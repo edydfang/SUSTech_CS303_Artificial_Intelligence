@@ -15,7 +15,8 @@ import os
 import time
 
 
-N_PROCESSORS = 1
+N_PROCESSORS = 2
+
 
 class bestSolution(object):
     def __init__(self):
@@ -27,20 +28,21 @@ class bestSolution(object):
             self.fitness = new_solution[1]
             self.best_solution = new_solution[0]
             # print("update", self.fitness)
-    
+
     def __str__(self):
         result = 's '
         for route in self.best_solution:
             if len(route) == 0:
                 continue
-            result+='0,'
+            result += '0,'
             for task in route:
-                result+='(%d,%d),' % task
-            result+='0,'
+                result += '(%d,%d),' % task
+            result += '0,'
         cost_total = self.fitness
         result = result[:-1] + '\n'
         result += 'q %d' % cost_total
         return result
+
 
 def main():
     '''
@@ -76,7 +78,7 @@ def main():
         else:
             unique_seed = None
         proc = Process(target=start_solver, args=(
-            network, spec,unique_seed , solution_receiver))
+            network, spec, unique_seed, solution_receiver))
         solvers.append(proc)
         proc.start()
         # run_time = (time.time() - start)
@@ -97,7 +99,7 @@ def time_up_sig(time_limit, start_time, solvers):
     terminate all procs when time is running out
     '''
     # print(time.time() - start_time)
-    time.sleep(time_limit - 0.3 - time_limit*0.01)
+    time.sleep(time_limit - 0.3 - time_limit * 0.01)
 
     for solver in solvers:
         solver.terminate()
@@ -119,10 +121,9 @@ class solution_updater(threading.Thread):
             try:
                 new_solution = self.solution_receiver.get(
                     block=True, timeout=0.1)
-                self.best_solution.update(new_solution)                   
+                self.best_solution.update(new_solution)
             except q2.Empty:
                 continue
-
 
     def stop(self):
         self._stop_event.set()
@@ -165,5 +166,3 @@ def read_instance_file(filedesc):
 
 if __name__ == '__main__':
     main()
-
-

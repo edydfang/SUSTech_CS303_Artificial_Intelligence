@@ -11,7 +11,7 @@ from utils.digraph import DiGraph
 from utils.graph import Graph
 from multiprocessing import Process, Queue
 
-MAX_ITERATION = 70
+MAX_ITERATION = 100
 P_M = 0.1
 PS_RANDOM = 19
 PS = 1 + PS_RANDOM
@@ -68,6 +68,7 @@ class Solver(object):
             if rnd < P_M:
                 new_idv = self.local_search(new_idv)
             # get better child
+            # print("---------"+str(n_iteration))
             if new_idv['fitness'] < P[idxa]['fitness']:
                 P[idxa] = new_idv
                 self.update_bsf(new_idv)
@@ -78,7 +79,8 @@ class Solver(object):
 
     def get_new_random_idv(self):
         idv = self.ps_to_idv(self.path_scanning())
-        # #p = self.random_init()
+        # idv = defaultdict(dict)
+        # idv['partition'] = self.random_init()
         idv['partition'] = self.chromesome_partition(idv['chromesome'])
         quality = self.solution_verify(idv['partition'])
         idv['load'] = quality[0]
@@ -112,7 +114,7 @@ class Solver(object):
             self.main_iteration(P)
             n_restart += 1
             P = defaultdict(dict)
-            wanted = sorted(P.iteritems(), key= lambda k,v: v['fitness'], reverse=True)[0:PS:2]
+            wanted = sorted(P.iteritems(), key= lambda k,v: v['fitness'], reverse=True)[0:int(PS/2)]
             for idx, idv in enumerate(wanted):
                 P[idx] = idv
             for idx in range(len(wanted),PS):
@@ -128,26 +130,26 @@ class Solver(object):
         ::output: new individual
         '''
         while True:
-            result = self.method_move(idv)
+            result = self.method_two_opt(idv)
             if not result[0]:
                 break
             idv = result[1]
             self.update_bsf(idv)
-            # print("local:", idv['fitness'])
+            # print("local1:", idv['fitness'])
         while True:
             result = self.method_swap(idv)
             if not result[0]:
                 break
             idv = result[1]
             self.update_bsf(idv)
-            # print("local:", idv['fitness'])
+            # print("local2:", idv['fitness'])
         while True:
-            result = self.method_two_opt(idv)
+            result = self.method_move(idv)
             if not result[0]:
                 break
             idv = result[1]
             self.update_bsf(idv)
-            # print("local:", idv['fitness'])
+            # print("local3:", idv['fitness'])
         return idv
 
     @staticmethod
