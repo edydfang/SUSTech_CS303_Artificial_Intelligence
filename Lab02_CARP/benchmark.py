@@ -5,7 +5,7 @@ import os
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 NUMBER_RUN = 5
-INSTANCES = ['gdb1', 'gdb10', 'val1A',
+INSTANCES = ['gdb1', 'gdb3', 'val1A',
              'val4A', 'val7A', 'egl-e1-A', 'egl-s1-A']
 TIME_LIMITS = ['10', '20', '30', '60', '90']
 for i in range(NUMBER_RUN):
