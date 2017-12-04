@@ -40,7 +40,7 @@ class DiGraph(object):
         '''
         cost = 0
         for edge in DiGraph.pairwise(path):
-            cost += graph[edge[0]][edge[1]]['cost']
+            cost += graph[edge[0]][edge[1]]['weight']
         return cost
 
     def add_edge_attr(self, edge, attrname, value):
@@ -73,7 +73,7 @@ class DiGraph(object):
 
     def add_weighted_edge(self, edge, weight):
         self.add_edge(edge)
-        self.add_edge_attr(edge, 'cost', weight)
+        self.add_edge_attr(edge, 'weight', weight)
 
     def add_edge(self, edge):
         """ assumes that edge is of type set, tuple or list;
@@ -174,7 +174,7 @@ class DiGraph(object):
             dist[vertex][vertex] = 0
         for key, value in self.__graph_dict.iteritems():
             for vertex in value.keys():
-                dist[key][vertex] = value[vertex]['cost']
+                dist[key][vertex] = value[vertex]['weight']
                 next_edge[key][vertex] = vertex
         for k in self.__graph_dict.keys():
             for i in self.__graph_dict.keys():
@@ -212,7 +212,7 @@ class DiGraph(object):
         while source_tmp != target:
             tmp = source_tmp
             source_tmp = self.shortest_paths_next[source_tmp][target]
-            length += self.__graph_dict[tmp][source_tmp]['cost']
+            length += self.__graph_dict[tmp][source_tmp]['weight']
             path.append(source_tmp)
         self.shortest_paths_data[edge] = (path, length)
         return (path, length)

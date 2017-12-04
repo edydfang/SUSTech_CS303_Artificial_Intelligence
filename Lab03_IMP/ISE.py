@@ -7,7 +7,7 @@ i. Input: the format of the estimator call should be as follows:
 python ISE.py –i <social network> -s <seed set> -m <diffusion
 model> -b <termination type> -t <time budget> -r <random seed>
 test python I
-
+./ISE.py -i network.txt -s seeds.txt -m IC -b 0 -t 1 -r xxx
 <social network> is the absolute path of the social network file
 <seed set> is the absolute path of the seed set file
 <diffusion model> can only be IC or LT
@@ -27,9 +27,12 @@ still needs to accept –r <random seed>, but can just ignore them while
 estimating.
 
 ii. Output: the value of the estimated influence spread.
+
+e.g. 
 '''
 import argparse
-import utils.digraph
+from utils.digraph import DiGraph
+from utils.esitimater import Estimater
 
 
 def main():
@@ -51,11 +54,48 @@ def main():
     parser.add_argument('-r', metavar='random_seed',
                         help='random seed for stochastic algorithm')
     args = parser.parse_args()
-    
+    graph = InfluenceNetwork()
+    graph.load_from_file(args.i)
+    seeds = loadseeds(args.s)
+    print(seeds)
+    print(graph.edges())
+    args.i.close()
+    args.s.close()
     print(args)
 
 
-class InfluenceNetwork()
+class InfluenceNetwork(DiGraph):
+    '''
+    Inheritance from Digraph
+    '''
+    def __init__(self):
+        DiGraph.__init__(self)
+        self.spec = {'nodes':-1, 'edges':-1}
+    
+    def load_from_file(self, filed):
+        '''
+        load from the file
+        '''
+        lines = filed.readlines()
+        self.spec['nodes'] = int(lines[0][0])
+        self.spec['edges'] = int(lines[0][1])
+        for line in lines[1:]:
+            data = line.split()
+            if len(data) == 3:
+                self.add_weighted_edge((int(data[0]), int(data[1])), float(data[2]))
+                # print((int(data[0]), int(data[1])), float(data[2]))
+
+def loadseeds(filed):
+    '''
+    load seeds from the file
+    '''
+    seeds = set()
+    lines = filed.readlines()
+    for line in lines:
+        data = line.split()
+        if len(data) == 1:
+            seeds.add(int(data[0]))
+    return seeds
 
 if __name__ == '__main__':
     main()
