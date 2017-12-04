@@ -28,9 +28,9 @@ estimating.
 
 ii. Output: the value of the estimated influence spread.
 
-e.g. 
 '''
 import argparse
+import logging
 from utils.digraph import DiGraph
 from utils.esitimater import Estimater
 
@@ -53,25 +53,31 @@ def main():
                         help='allowed time for tha algorithm, in second')
     parser.add_argument('-r', metavar='random_seed',
                         help='random seed for stochastic algorithm')
+    parser.add_argument('-d', help='debug mode', action="store_true")
     args = parser.parse_args()
+    if args.d:
+        logging.basicConfig(level=logging.DEBUG)
     graph = InfluenceNetwork()
     graph.load_from_file(args.i)
     seeds = loadseeds(args.s)
-    print(seeds)
-    print(graph.edges())
+    # print(seeds)
+    # print(graph.edges())
     args.i.close()
     args.s.close()
-    print(args)
+    # print(args)
+    estimater = Estimater(graph, seeds, args.m)
+    estimater.estimate()
 
 
 class InfluenceNetwork(DiGraph):
     '''
     Inheritance from Digraph
     '''
+
     def __init__(self):
         DiGraph.__init__(self)
-        self.spec = {'nodes':-1, 'edges':-1}
-    
+        self.spec = {'nodes': -1, 'edges': -1}
+
     def load_from_file(self, filed):
         '''
         load from the file
@@ -82,8 +88,10 @@ class InfluenceNetwork(DiGraph):
         for line in lines[1:]:
             data = line.split()
             if len(data) == 3:
-                self.add_weighted_edge((int(data[0]), int(data[1])), float(data[2]))
+                self.add_weighted_edge(
+                    (int(data[0]), int(data[1])), float(data[2]))
                 # print((int(data[0]), int(data[1])), float(data[2]))
+
 
 def loadseeds(filed):
     '''
@@ -96,6 +104,7 @@ def loadseeds(filed):
         if len(data) == 1:
             seeds.add(int(data[0]))
     return seeds
+
 
 if __name__ == '__main__':
     main()

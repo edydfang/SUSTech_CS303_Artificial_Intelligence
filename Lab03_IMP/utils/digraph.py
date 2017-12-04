@@ -23,6 +23,8 @@ class DiGraph(object):
         if graph_dict is None:
             graph_dict = {}
         self.__graph_dict = graph_dict
+        self.__inverse_graph = {}
+        self.inverse = self.__inverse_graph
         self.shortest_paths_next = None
         self.shortest_paths_data = defaultdict(dict)
 
@@ -48,6 +50,7 @@ class DiGraph(object):
         add attribute to some edge
         """
         self.__graph_dict[edge[0]][edge[1]][attrname] = value
+        self.__inverse_graph[edge[1]][edge[0]][attrname] = value
 
     def __getitem__(self, key):
         if key in self.__graph_dict.keys():
@@ -86,9 +89,15 @@ class DiGraph(object):
         if vertex1 in self.__graph_dict:
             self.__graph_dict[vertex1][vertex2] = dict()
         else:
-            self.__graph_dict[vertex1] = {vertex2: dict()}
+            self.__graph_dict[vertex1] = {vertex2: dict()} 
         if vertex2 not in self.__graph_dict:
             self.__graph_dict[vertex2] = dict()
+        if vertex2 in self.__inverse_graph:
+            self.__inverse_graph[vertex2][vertex1] = dict()
+        else:
+            self.__inverse_graph[vertex2] = {vertex1: dict()}
+        if vertex1 not in self.__inverse_graph:
+            self.__inverse_graph[vertex1] = dict()
 
     def __generate_edges(self):
         """ A static method generating the edges of the
