@@ -11,24 +11,45 @@ class Estimater(object):
     Class to solve the problem 01
     '''
 
-    def __init__(self, graph, seeds, model):
+    def __init__(self, graph, seeds, model, solution_receiver, processid, ter_type, random_s=None):
         model_map = {'IC': self.ic_simulate, 'LT': self.lt_simulate}
+        if random_s:
+            random.seed(random_s)
         self.graph = graph
         self.seeds = seeds
         self.nodes = self.graph.vertices()
         self.model = model_map[model]
+        self.solution_receiver = solution_receiver
+        self.processid = processid
+        self.ter_type = ter_type
+        self.cur_avg = 0
+        self.cur_round = 0
+        logging.debug(random_s)
 
-    def estimate(self):
+    def get_result(self):
         '''
-        return the influenece valuence
+        get the influenece valuence
         '''
-        sim_round = int((len(self.nodes) / len(self.seeds)) * 1000)
+        sim_round = int((len(self.nodes) / len(self.seeds)) * 100)
         sum_activated = 0
         for _ in range(sim_round):
             estimated_set = self.model()
             sum_activated += len(estimated_set)
-        logging.debug(sum_activated / sim_round)
-        # print(sum_activated/sim_round)
+        self.cur_avg = (self.cur_round*self.cur_avg + sum_activated / sim_round)/(self.cur_round+1)
+        self.cur_round += 1
+        logging.debug("id %d, avg %f", self.processid, self.cur_avg)
+        self.solution_receiver.put([self.processid, self.cur_avg])
+
+    def estimate(self):
+        '''
+        see the termination type to decide
+        '''
+        if self.ter_type == '0':
+            for round_idx in range(100):
+                self.get_result()
+        else:
+            while True:
+                self.get_result()
 
     def ic_simulate(self):
         '''

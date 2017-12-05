@@ -31,8 +31,15 @@ ii. Output: the value of the estimated influence spread.
 '''
 import argparse
 import logging
+import time
+import threading
+from threading import Thread
+import Queue as q2
+from multiprocessing import Process, Queue
 from utils.digraph import DiGraph
 from utils.esitimater import Estimater
+
+N_PROCESSORS = 2
 
 
 def main():
@@ -60,13 +67,87 @@ def main():
     graph = InfluenceNetwork()
     graph.load_from_file(args.i)
     seeds = loadseeds(args.s)
-    # print(seeds)
-    # print(graph.edges())
+    termination_type = args.b
+    time_limit = args.t
+    logging.debug("%s, %s", termination_type, time_limit)
     args.i.close()
     args.s.close()
-    # print(args)
-    estimater = Estimater(graph, seeds, args.m)
-    estimater.estimate()
+    random_seed = args.r
+    estimaters = list()
+    solution_receiver = Queue()
+    results = [None] * N_PROCESSORS
+    thread1 = solution_updater(
+        solution_receiver, results)
+    thread1.start()
+
+    # multi processors processing
+    for idx in range(N_PROCESSORS):
+        if random_seed:
+            unique_seed = random_seed + str(idx)
+        else:
+            unique_seed = None
+        proc = Process(target=start_estimater, args=(
+            graph, seeds, args.m, solution_receiver, idx, termination_type, unique_seed))
+        estimaters.append(proc)
+        proc.start()
+        # run_time = (time.time() - start)
+    start = time.time()
+    # start a thread for timing
+    thread2 = Thread(target=time_up_sig, args=(time_limit, start, estimaters))
+    thread2.daemon = True
+    thread2.start()
+    # exit
+    for proc in estimaters:
+        proc.join()
+    thread1.stop()
+    print(str(sum(results) / N_PROCESSORS))
+
+
+def start_estimater(graph, seeds, mode, solution_receiver, processid, termination_type, random_seed):
+    '''
+    function to start new process
+    '''
+    est = Estimater(graph, seeds, mode, solution_receiver,
+                    processid, termination_type, random_seed)
+    est.estimate()
+
+
+def time_up_sig(time_limit, start_time, solvers):
+    '''
+    terminate all procs when time is running out
+    '''
+    # print(time.time() - start_time)
+    time.sleep(time_limit - 0.3 - time_limit * 0.01)
+
+    for solver in solvers:
+        solver.terminate()
+    return
+
+
+class solution_updater(threading.Thread):
+    """Thread class with a stop() method. The thread itself has to check
+    regularly for the stopped() condition."""
+
+    def __init__(self, solution_receiver, results):
+        super(solution_updater, self).__init__()
+        self._stop_event = threading.Event()
+        self.solution_receiver = solution_receiver
+        self.results = results
+
+    def run(self):
+        while not self._stop_event.is_set():
+            try:
+                new_result = self.solution_receiver.get(
+                    block=True, timeout=0.1)
+                self.results[new_result[0]] = new_result[1]
+            except q2.Empty:
+                continue
+
+    def stop(self):
+        self._stop_event.set()
+
+    def stopped(self):
+        return self._stop_event.is_set()
 
 
 class InfluenceNetwork(DiGraph):
