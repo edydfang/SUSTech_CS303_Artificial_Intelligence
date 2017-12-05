@@ -46,6 +46,7 @@ def main():
     '''
     decode the parameters
     '''
+    start = time.time()
     parser = argparse.ArgumentParser(
         description='Program for Influence Spread Computation\nCoded by Edward FANG')
     parser.add_argument('-i', metavar='social_network', type=argparse.FileType('r'),
@@ -90,10 +91,10 @@ def main():
             graph, seeds, args.m, solution_receiver, idx, termination_type, unique_seed))
         estimaters.append(proc)
         proc.start()
-        # run_time = (time.time() - start)
-    start = time.time()
+        begin = (time.time() - start)
+
     # start a thread for timing
-    thread2 = Thread(target=time_up_sig, args=(time_limit, start, estimaters))
+    thread2 = Thread(target=time_up_sig, args=(time_limit, begin, estimaters))
     thread2.daemon = True
     thread2.start()
     # exit
@@ -117,7 +118,7 @@ def time_up_sig(time_limit, start_time, solvers):
     terminate all procs when time is running out
     '''
     # print(time.time() - start_time)
-    time.sleep(time_limit - 0.3 - time_limit * 0.01)
+    time.sleep(time_limit - start_time - 0.3 - time_limit * 0.01)
 
     for solver in solvers:
         solver.terminate()

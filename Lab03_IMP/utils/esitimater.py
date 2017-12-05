@@ -24,7 +24,6 @@ class Estimater(object):
         self.ter_type = ter_type
         self.cur_avg = 0
         self.cur_round = 0
-        logging.debug(random_s)
 
     def get_result(self):
         '''
@@ -35,7 +34,8 @@ class Estimater(object):
         for _ in range(sim_round):
             estimated_set = self.model()
             sum_activated += len(estimated_set)
-        self.cur_avg = (self.cur_round*self.cur_avg + sum_activated / sim_round)/(self.cur_round+1)
+        self.cur_avg = (self.cur_round * self.cur_avg +
+                        sum_activated / sim_round) / (self.cur_round + 1)
         self.cur_round += 1
         logging.debug("id %d, avg %f", self.processid, self.cur_avg)
         self.solution_receiver.put([self.processid, self.cur_avg])
@@ -44,10 +44,12 @@ class Estimater(object):
         '''
         see the termination type to decide
         '''
-        if self.ter_type == '0':
-            for round_idx in range(100):
+        if self.ter_type == 0:
+            # logging.debug('a')
+            for _ in range(100):
                 self.get_result()
         else:
+            # logging.debug('b')
             while True:
                 self.get_result()
 
