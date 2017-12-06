@@ -172,7 +172,6 @@ class InfluenceNetwork(DiGraph):
             if len(data) == 3:
                 self.add_weighted_edge(
                     (int(data[0]), int(data[1])), float(data[2]))
-                # print((int(data[0]), int(data[1])), float(data[2]))
 
 
 def loadseeds(filed):
