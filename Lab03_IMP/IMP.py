@@ -60,7 +60,8 @@ def main():
     graph = InfluenceNetwork()
     graph.load_from_file(args.i)
     args.i.close()
-
+    # TODO: implement multiple algorithm and choose them according
+    # to the size of the problem and the time limit
 
 
 class InfluenceNetwork(DiGraph):
