@@ -29,6 +29,7 @@ a node index. An example is also included in the package.
 import argparse
 import logging
 import time
+from utils.solver import Solver
 from utils.digraph import DiGraph
 
 N_PROCESSORS = 2
@@ -60,8 +61,16 @@ def main():
     graph = InfluenceNetwork()
     graph.load_from_file(args.i)
     args.i.close()
-    # TODO: implement multiple algorithm and choose them according
+    time_limit = -1
+    if args.b == 1:
+        time_limit = args.t
+    imp_solver = Solver(graph, time_limit - time.time()-0.3, args.r, args.k)
+    model_map = {'IC': imp_solver.solve_ic, 'LT': imp_solver.solve_lt}
+    model_map[args.m]()
+    # implement multiple algorithm and choose them according
     # to the size of the problem and the time limit
+
+
 
 
 class InfluenceNetwork(DiGraph):

@@ -1,4 +1,4 @@
 '''
 utils for the algorithm
 '''
-__all__ = ['digraph', 'esitimater']
+__all__ = ['digraph', 'esitimater', 'solver']
