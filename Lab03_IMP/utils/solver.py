@@ -20,7 +20,7 @@ class Solver(object):
         self.num_k = num_k
         self.time_limit = time_limit
         self.graph = graph
-        self.heuristic = True
+        self.heuristic = False
 
     def solve_ic(self):
         '''
@@ -121,9 +121,35 @@ class Solver(object):
         return cur_set
 
     def lt_evaluate(self, seeds):
-        pass
+        '''
+        evaluate based on linear threshold model
+        '''
+        cnt = 0
+        for _ in range(10000):
+            activated = seeds
+            threshold = dict()
+            for node in self.graph.vertices():
+                threshold[node] = random.random()
+            changed = True
+            while changed:
+                changed = False
+                inactive = set.difference(
+                    set(self.graph.vertices()), activated)
+                for node in inactive:
+                    indicator = 0
+                    for linked_node, value in self.graph.inverse[node].iteritems():
+                        if linked_node in activated:
+                            indicator += self.graph.inverse[node][linked_node]['weight']
+                    if indicator > threshold[node]:
+                        activated.add(node)
+                        changed = True
+            cnt += len(activated)
+        return cnt / 10000
 
     def ic_evaluate(self, seeds):
+        '''
+        evaluate based on independent cascade model
+        '''
         cnt = 0
         for _ in range(10000):
             activated = set()
@@ -154,18 +180,16 @@ class Solver(object):
             discount_degree[vertex] = degree[vertex]
             t_selected[vertex] = 0
         for _ in range(self.num_k):
-            max_vertex = sorted(discount_degree.iteritems(), \
-                key=lambda (k, v): v, reverse=True)[0][0]
+            max_vertex = sorted(discount_degree.iteritems(),
+                                key=lambda (k, v): v, reverse=True)[0][0]
             del discount_degree[max_vertex]
             seed_set.add(max_vertex)
             full_set.remove(max_vertex)
             for vertex in self.graph[max_vertex].keys():
                 if vertex in full_set:
                     t_selected[vertex] += 1
-                    # discount_degree[vertex] = degree[vertex] - t_selected[vertex]
                     # how much is the p? average?
                     discount_degree[vertex] = degree[vertex] - 2 * t_selected[vertex] -\
                         (degree[vertex] - t_selected[vertex]) * \
                         t_selected[vertex] * 0.75
-                    # print (vertex, discount_degree[vertex])
         return seed_set
