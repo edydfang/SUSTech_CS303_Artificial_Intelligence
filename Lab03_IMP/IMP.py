@@ -40,6 +40,7 @@ def main():
     '''
     decode the parameters
     '''
+    start_time = time.time()
     parser = argparse.ArgumentParser(
         description='Program for Influence Spread Computation\nCoded by Edward FANG')
     parser.add_argument('-i', metavar='social_network', type=argparse.FileType('r'),
@@ -58,7 +59,7 @@ def main():
     args = parser.parse_args()
     if args.d:
         logging.basicConfig(level=logging.DEBUG)
-    logging.debug(args)
+    # logging.debug(args)
     graph = InfluenceNetwork()
     graph.load_from_file(args.i)
     args.i.close()
@@ -68,7 +69,7 @@ def main():
     if args.r:
         random.seed(args.r)
     imp_solver = Solver(graph, args.m, time_limit -
-                        time.time() - 0.3, args.r, args.k)
+                        time.time() + start_time - 0.3, args.r, args.k)
     imp_solver.solve()
     # implement multiple algorithm and choose them according
     # to the size of the problem and the time limit

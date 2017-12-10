@@ -8,7 +8,8 @@ import logging
 import heapq
 import time
 import os
-from multiprocessing import Pool, Queue
+import threading
+from multiprocessing import Queue
 from collections import defaultdict
 from utils.imp_evaluator import Evaluator
 
@@ -21,6 +22,8 @@ class Solver(object):
     '''
 
     def __init__(self, graph, model, time_limit, random_seed, num_k):
+        self.time_start = time.time()
+        # logging.debug(time_limit)
         if random_seed is not None:
             random.seed(random_seed)
         self.num_k = num_k
@@ -28,14 +31,15 @@ class Solver(object):
         self.graph = graph
         self.model = model
         # use degree discount heuristics
-        if time_limit != -1:
+        if time_limit > 0:
             self.seedset_heristics = self.degree_discount()
+            timeup_thread = threading.Thread(target=self.output_heristics)
+            timeup_thread.start()
         # initialize the process pool
         self.workers = list()
         self.total_sim_round = 10000
         self.sim_round_process = int(self.total_sim_round / N_PROCESSORS)
         self.avg_time = None
-
         for idx in range(N_PROCESSORS):
             new_task_queue = Queue()
             new_result_queue = Queue()
@@ -44,17 +48,32 @@ class Solver(object):
             self.workers.append((evaluator, new_task_queue, new_result_queue))
             evaluator.start()
 
+    def output_seedset(self, seedset):
+        '''
+        output the seed set
+        '''
+        for seed in seedset:
+            print(seed)
+        self.safe_exit()
+
     def solve(self):
         '''
         unique solver
         '''
         seedset = self.solve_celf()
-        for seed in seedset:
-            print(seed)
+        self.output_seedset(seedset)
+
+    def safe_exit(self):
+        '''
+        terminate sub process and exit
+        '''
+        logging.debug("time up")
         for worker in self.workers:
             worker[1].put((-1, None, None))
         for worker in self.workers:
             worker[0].join()
+        # logging.debug("exiting2")
+        os._exit(0)
 
     def solve_celf(self):
         '''
@@ -64,6 +83,7 @@ class Solver(object):
         state_list = list()
         cur_spread = 0
         cur_set = set()
+        # starttime = time.time()
         # init the heap, note this is a minheap
         for nodeid in self.graph.vertices():
             new_spread = self.seed_evaluate(set.union(cur_set, {nodeid}))
@@ -74,6 +94,9 @@ class Solver(object):
         cur_spread = -inserted_node[0]
         cur_max = 1
         count = 0
+        # endtime = time.time()
+        # logging.debug(endtime - starttime)
+        # starttime = endtime
         while len(cur_set) < self.num_k:
             next_node = heapq.heappop(state_list)
             if next_node[0] < cur_max:
@@ -90,6 +113,9 @@ class Solver(object):
                 cur_set.add(inserted_node[1])
                 cur_spread += -inserted_node[0]
                 cur_max = 1
+                # endtime = time.time()
+                # logging.debug(endtime - starttime)
+                # starttime = endtime
         logging.debug(cur_spread)
         return cur_set
 
@@ -134,3 +160,11 @@ class Solver(object):
                         (degree[vertex] - t_selected[vertex]) * \
                         t_selected[vertex] * 0.75
         return seed_set
+
+    def output_heristics(self):
+        '''
+        when time up output bad solution
+        '''
+        time.sleep(self.time_limit-time.time()+ self.time_start)
+        self.output_seedset(self.seedset_heristics)
+

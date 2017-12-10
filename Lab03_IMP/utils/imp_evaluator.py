@@ -33,7 +33,7 @@ class Evaluator(Process):
         start to retrive tasks from task_queue
         '''
         random.seed(self.random_seed)
-        logging.debug(random.random())
+        # logging.debug(random.random())
         while True:
             # logging.debug("getting tasks")
             new_task = self.task_queue.get()
