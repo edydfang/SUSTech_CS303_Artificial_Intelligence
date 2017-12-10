@@ -2,10 +2,10 @@
 '''
 This program is used as subprocess for the solver to get the Monto-Carlo results
 '''
+from __future__ import division
 import random
 import logging
 from multiprocessing import Process
-
 
 class Evaluator(Process):
     '''
@@ -15,7 +15,7 @@ class Evaluator(Process):
     id = -1 => exit
     '''
 
-    def __init__(self, graph, model, task_queue, result_queue):
+    def __init__(self, graph, model, task_queue, result_queue, random_seed):
         '''
         input the global paras
         '''
@@ -26,11 +26,14 @@ class Evaluator(Process):
         self.result_queue = result_queue
         model_map = {'IC': self.ic_evaluate, 'LT': self.lt_evaluate}
         self.evaluate = model_map[model]
+        self.random_seed = random_seed
 
     def run(self):
         '''
         start to retrive tasks from task_queue
         '''
+        random.seed(self.random_seed)
+        logging.debug(random.random())
         while True:
             # logging.debug("getting tasks")
             new_task = self.task_queue.get()
@@ -60,7 +63,14 @@ class Evaluator(Process):
         return cnt / sim_round
 
     def lt_evaluate(self, seeds, sim_round):
+        '''
+        method to evaluate Linear Threshold model
+        '''
         cnt = 0
+        '''
+        flag = 100
+        prev = 0
+        '''
         for _ in range(sim_round):
             activated = seeds
             threshold = dict()
@@ -79,5 +89,18 @@ class Evaluator(Process):
                     if indicator > threshold[node]:
                         activated.add(node)
                         changed = True
-            cnt += len(activated)
+            num_activated = len(activated)
+            cnt += num_activated
+            '''
+            current = cnt / (idx + 1)
+            difference = abs(current - prev)
+            prev = current
+            # if idx % 1000 == 0:
+            #     logging.debug(difference)
+            if difference < 0.03:
+                flag -= 1
+                if flag == 0:
+                    logging.debug(idx)
+                    break
+            '''
         return cnt / sim_round

@@ -34,12 +34,13 @@ class Solver(object):
         self.workers = list()
         self.total_sim_round = 10000
         self.sim_round_process = int(self.total_sim_round / N_PROCESSORS)
+        self.avg_time = None
 
-        for _ in range(N_PROCESSORS):
+        for idx in range(N_PROCESSORS):
             new_task_queue = Queue()
             new_result_queue = Queue()
             evaluator = Evaluator(
-                graph, model, new_task_queue, new_result_queue)
+                graph, model, new_task_queue, new_result_queue, random_seed + str(idx))
             self.workers.append((evaluator, new_task_queue, new_result_queue))
             evaluator.start()
 
@@ -97,10 +98,13 @@ class Solver(object):
         evaluate based on linear threshold model
         '''
         cnt = 0
+        # start = time.time()
         for idx, worker in enumerate(self.workers):
             worker[1].put((idx, seeds, self.sim_round_process))
         for worker in self.workers:
             cnt += worker[2].get()[1]
+        # endtime = time.time()
+        # logging.debug(endtime - start)
         return cnt / len(self.workers)
 
     def degree_discount(self):

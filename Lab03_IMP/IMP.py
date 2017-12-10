@@ -29,6 +29,7 @@ a node index. An example is also included in the package.
 import argparse
 import logging
 import time
+import random
 from utils.solver import Solver
 from utils.digraph import DiGraph
 
@@ -64,7 +65,9 @@ def main():
     time_limit = -1
     if args.b == 1:
         time_limit = args.t
-    imp_solver = Solver(graph, args.m,  time_limit -
+    if args.r:
+        random.seed(args.r)
+    imp_solver = Solver(graph, args.m, time_limit -
                         time.time() - 0.3, args.r, args.k)
     imp_solver.solve()
     # implement multiple algorithm and choose them according
