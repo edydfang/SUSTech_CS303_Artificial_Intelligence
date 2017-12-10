@@ -80,18 +80,28 @@ class Estimater(object):
         '''
         activated = set(self.seeds)
         threshold = dict()
-        for node in self.nodes:
+        for node in self.graph.vertices():
             threshold[node] = random.random()
-        changed = True
-        while changed:
-            changed = False
-            inactive = set.difference(set(self.nodes), activated)
-            for node in inactive:
+
+        def get_nextround(changed_vertices):
+            '''
+            get influenced vertices
+            '''
+            next_round = set()
+            for vertex in changed_vertices:
+                next_round = set.union(
+                    next_round, set(self.graph[vertex].keys()))
+            return next_round
+        next_round = get_nextround(activated)
+        while next_round:
+            changed_vertices = set()
+            for node in next_round:
                 indicator = 0
-                for linked_node, value in self.graph.inverse[node].iteritems():
+                for linked_node, _ in self.graph.inverse[node].iteritems():
                     if linked_node in activated:
-                        indicator += value['weight']
+                        indicator += self.graph.inverse[node][linked_node]['weight']
                 if indicator > threshold[node]:
+                    changed_vertices.add(node)
                     activated.add(node)
-                    changed = True
+            next_round = get_nextround(changed_vertices)
         return activated

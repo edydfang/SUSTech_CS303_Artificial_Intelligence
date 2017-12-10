@@ -7,6 +7,7 @@ import random
 import logging
 from multiprocessing import Process
 
+
 class Evaluator(Process):
     '''
     evaluator for multi-processing
@@ -76,19 +77,28 @@ class Evaluator(Process):
             threshold = dict()
             for node in self.graph.vertices():
                 threshold[node] = random.random()
-            changed = True
-            while changed:
-                changed = False
-                inactive = set.difference(
-                    set(self.graph.vertices()), activated)
-                for node in inactive:
+
+            def get_nextround(changed_vertices):
+                '''
+                get influenced vertices
+                '''
+                next_round = set()
+                for vertex in changed_vertices:
+                    next_round = set.union(
+                        next_round, set(self.graph[vertex].keys()))
+                return next_round
+            next_round = get_nextround(activated)
+            while next_round:
+                changed_vertices = set()
+                for node in next_round:
                     indicator = 0
-                    for linked_node in self.graph.inverse[node].keys():
+                    for linked_node, _ in self.graph.inverse[node].iteritems():
                         if linked_node in activated:
                             indicator += self.graph.inverse[node][linked_node]['weight']
                     if indicator > threshold[node]:
+                        changed_vertices.add(node)
                         activated.add(node)
-                        changed = True
+                next_round = get_nextround(changed_vertices)
             num_activated = len(activated)
             cnt += num_activated
             '''
