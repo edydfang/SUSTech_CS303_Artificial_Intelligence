@@ -20,30 +20,24 @@ class Solver(object):
         self.num_k = num_k
         self.time_limit = time_limit
         self.graph = graph
-        self.heuristic = False
+        # use degree discount heuristics
+        if time_limit != -1:
+            self.seedset_heristics = self.degree_discount()
 
     def solve_ic(self):
         '''
         control for the ic model
         '''
-        if self.heuristic:
-            # use degree discount heuristics
-            seedset = self.degree_discount()
-        else:
-            # use CELF
-            seedset = self.ic_celf()
+        # use CELF
+        seedset = self.ic_celf()
         logging.debug(seedset)
 
     def solve_lt(self):
         '''
         control for the LT model
         '''
-        if self.heuristic:
-            # use degree discount heuristics
-            seedset = self.degree_discount()
-        else:
-            # use CELF
-            seedset = self.lt_celf()
+        # use CELF
+        seedset = self.lt_celf()
         logging.debug(seedset)
 
     def ic_celf(self):
@@ -76,7 +70,7 @@ class Solver(object):
                     cur_max = next_node[0]
                 heapq.heappush(state_list, next_node)
             else:
-                inserted_node = heapq.heappop(state_list)
+                inserted_node = next_node
                 cur_set.add(inserted_node[1])
                 cur_spread += -inserted_node[0]
                 cur_max = 1
@@ -113,7 +107,7 @@ class Solver(object):
                     cur_max = next_node[0]
                 heapq.heappush(state_list, next_node)
             else:
-                inserted_node = heapq.heappop(state_list)
+                inserted_node = next_node
                 cur_set.add(inserted_node[1])
                 cur_spread += -inserted_node[0]
                 cur_max = 1
@@ -137,7 +131,7 @@ class Solver(object):
                     set(self.graph.vertices()), activated)
                 for node in inactive:
                     indicator = 0
-                    for linked_node, value in self.graph.inverse[node].iteritems():
+                    for linked_node in self.graph.inverse[node].keys():
                         if linked_node in activated:
                             indicator += self.graph.inverse[node][linked_node]['weight']
                     if indicator > threshold[node]:
@@ -147,6 +141,10 @@ class Solver(object):
         return cnt / 10000
 
     def ic_evaluate(self, seeds):
+        return self.ic_evaluate_unit(seeds)
+        pass
+
+    def ic_evaluate_unit(self, seeds):
         '''
         evaluate based on independent cascade model
         '''
