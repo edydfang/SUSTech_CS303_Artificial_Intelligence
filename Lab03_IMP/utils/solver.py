@@ -6,7 +6,13 @@ from __future__ import division
 import random
 import logging
 import heapq
+import time
+import os
+from multiprocessing import Pool, Queue
 from collections import defaultdict
+from utils.imp_evaluator import Evaluator
+
+N_PROCESSORS = 2
 
 
 class Solver(object):
@@ -14,33 +20,42 @@ class Solver(object):
     Just a solver
     '''
 
-    def __init__(self, graph, time_limit, random_seed, num_k):
+    def __init__(self, graph, model, time_limit, random_seed, num_k):
         if random_seed is not None:
             random.seed(random_seed)
         self.num_k = num_k
         self.time_limit = time_limit
         self.graph = graph
+        self.model = model
         # use degree discount heuristics
         if time_limit != -1:
             self.seedset_heristics = self.degree_discount()
+        # initialize the process pool
+        self.workers = list()
+        self.total_sim_round = 10000
+        self.sim_round_process = int(self.total_sim_round / N_PROCESSORS)
 
-    def solve_ic(self):
-        '''
-        control for the ic model
-        '''
-        # use CELF
-        seedset = self.ic_celf()
-        logging.debug(seedset)
+        for _ in range(N_PROCESSORS):
+            new_task_queue = Queue()
+            new_result_queue = Queue()
+            evaluator = Evaluator(
+                graph, model, new_task_queue, new_result_queue)
+            self.workers.append((evaluator, new_task_queue, new_result_queue))
+            evaluator.start()
 
-    def solve_lt(self):
+    def solve(self):
         '''
-        control for the LT model
+        unique solver
         '''
-        # use CELF
-        seedset = self.lt_celf()
-        logging.debug(seedset)
+        seedset = self.solve_celf()
+        for seed in seedset:
+            print(seed)
+        for worker in self.workers:
+            worker[1].put((-1, None, None))
+        for worker in self.workers:
+            worker[0].join()
 
-    def ic_celf(self):
+    def solve_celf(self):
         '''
         implementation of CELF
         note that the first element in the tuple is negative form of the the spread contribution
@@ -50,7 +65,7 @@ class Solver(object):
         cur_set = set()
         # init the heap, note this is a minheap
         for nodeid in self.graph.vertices():
-            new_spread = self.ic_evaluate(set.union(cur_set, {nodeid}))
+            new_spread = self.seed_evaluate(set.union(cur_set, {nodeid}))
             state_list.append((-new_spread, nodeid))
         heapq.heapify(state_list)
         inserted_node = heapq.heappop(state_list)
@@ -62,7 +77,7 @@ class Solver(object):
             next_node = heapq.heappop(state_list)
             if next_node[0] < cur_max:
                 count += 1
-                new_spread = self.ic_evaluate(
+                new_spread = self.seed_evaluate(
                     set.union(cur_set, {next_node[1]}))
                 diff = new_spread - cur_spread
                 next_node = (-diff, next_node[1])
@@ -77,92 +92,16 @@ class Solver(object):
         logging.debug(cur_spread)
         return cur_set
 
-    def lt_celf(self):
-        '''
-        implementation of CELF
-        note that the first element in the tuple is negative form of the the spread contribution
-        '''
-        state_list = list()
-        cur_spread = 0
-        cur_set = set()
-        # init the heap, note this is a minheap
-        for nodeid in self.graph.vertices():
-            new_spread = self.lt_evaluate(set.union(cur_set, {nodeid}))
-            state_list.append((-new_spread, nodeid))
-        heapq.heapify(state_list)
-        inserted_node = heapq.heappop(state_list)
-        cur_set.add(inserted_node[1])
-        cur_spread = -inserted_node[0]
-        cur_max = 1
-        count = 0
-        while len(cur_set) < self.num_k:
-            next_node = heapq.heappop(state_list)
-            if next_node[0] < cur_max:
-                count += 1
-                new_spread = self.lt_evaluate(
-                    set.union(cur_set, {next_node[1]}))
-                diff = new_spread - cur_spread
-                next_node = (-diff, next_node[1])
-                if next_node[0] < cur_max:
-                    cur_max = next_node[0]
-                heapq.heappush(state_list, next_node)
-            else:
-                inserted_node = next_node
-                cur_set.add(inserted_node[1])
-                cur_spread += -inserted_node[0]
-                cur_max = 1
-        logging.debug(cur_spread)
-        return cur_set
-
-    def lt_evaluate(self, seeds):
+    def seed_evaluate(self, seeds):
         '''
         evaluate based on linear threshold model
         '''
         cnt = 0
-        for _ in range(10000):
-            activated = seeds
-            threshold = dict()
-            for node in self.graph.vertices():
-                threshold[node] = random.random()
-            changed = True
-            while changed:
-                changed = False
-                inactive = set.difference(
-                    set(self.graph.vertices()), activated)
-                for node in inactive:
-                    indicator = 0
-                    for linked_node in self.graph.inverse[node].keys():
-                        if linked_node in activated:
-                            indicator += self.graph.inverse[node][linked_node]['weight']
-                    if indicator > threshold[node]:
-                        activated.add(node)
-                        changed = True
-            cnt += len(activated)
-        return cnt / 10000
-
-    def ic_evaluate(self, seeds):
-        return self.ic_evaluate_unit(seeds)
-        pass
-
-    def ic_evaluate_unit(self, seeds):
-        '''
-        evaluate based on independent cascade model
-        '''
-        cnt = 0
-        for _ in range(10000):
-            activated = set()
-            next_layer = seeds
-            while next_layer:
-                new_layer = set()
-                for node in next_layer:
-                    for linked_node, value in self.graph[node].iteritems():
-                        rnd = random.random()
-                        if linked_node not in activated and rnd < value['weight']:
-                            new_layer.add(linked_node)
-                activated = set.union(activated, next_layer)
-                next_layer = new_layer
-            cnt += len(activated)
-        return cnt / 10000
+        for idx, worker in enumerate(self.workers):
+            worker[1].put((idx, seeds, self.sim_round_process))
+        for worker in self.workers:
+            cnt += worker[2].get()[1]
+        return cnt / len(self.workers)
 
     def degree_discount(self):
         '''

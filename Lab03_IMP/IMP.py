@@ -64,13 +64,11 @@ def main():
     time_limit = -1
     if args.b == 1:
         time_limit = args.t
-    imp_solver = Solver(graph, time_limit - time.time()-0.3, args.r, args.k)
-    model_map = {'IC': imp_solver.solve_ic, 'LT': imp_solver.solve_lt}
-    model_map[args.m]()
+    imp_solver = Solver(graph, args.m,  time_limit -
+                        time.time() - 0.3, args.r, args.k)
+    imp_solver.solve()
     # implement multiple algorithm and choose them according
     # to the size of the problem and the time limit
-
-
 
 
 class InfluenceNetwork(DiGraph):
