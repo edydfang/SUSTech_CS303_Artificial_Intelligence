@@ -49,7 +49,7 @@ class Evaluator(Process):
         cnt = 0
         for _ in range(sim_round):
             activated = set()
-            next_layer = seeds
+            next_layer = set(seeds)
             while next_layer:
                 new_layer = set()
                 for node in next_layer:
@@ -72,7 +72,7 @@ class Evaluator(Process):
         prev = 0
         '''
         for _ in range(sim_round):
-            activated = seeds
+            activated = set(seeds)
             threshold = dict()
             for node in self.graph.vertices():
                 threshold[node] = random.random()

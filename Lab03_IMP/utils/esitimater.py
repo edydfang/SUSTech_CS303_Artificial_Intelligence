@@ -60,7 +60,8 @@ class Estimater(object):
         use the independent Cascade model
         '''
         activated = set()
-        next_layer = self.seeds
+        logging.debug(self.seeds)
+        next_layer = set(self.seeds)
         while next_layer:
             new_layer = set()
             for node in next_layer:
@@ -77,7 +78,7 @@ class Estimater(object):
         '''
         use the independent Cascade model
         '''
-        activated = self.seeds
+        activated = set(self.seeds)
         threshold = dict()
         for node in self.nodes:
             threshold[node] = random.random()
