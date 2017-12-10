@@ -97,9 +97,9 @@ class Estimater(object):
             changed_vertices = set()
             for node in next_round:
                 indicator = 0
-                for linked_node, _ in self.graph.inverse[node].iteritems():
+                for linked_node, value in self.graph.inverse[node].iteritems():
                     if linked_node in activated:
-                        indicator += self.graph.inverse[node][linked_node]['weight']
+                        indicator += value['weight']
                 if indicator > threshold[node]:
                     changed_vertices.add(node)
                     activated.add(node)
