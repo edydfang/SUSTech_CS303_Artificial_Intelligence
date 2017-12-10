@@ -29,7 +29,8 @@ class Estimater(object):
         '''
         get the influenece valuence
         '''
-        sim_round = int((len(self.nodes) / len(self.seeds)) * 100)
+        # logging.debug("get result")
+        sim_round = 100
         sum_activated = 0
         for _ in range(sim_round):
             estimated_set = self.model()

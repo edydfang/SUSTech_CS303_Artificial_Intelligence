@@ -141,6 +141,7 @@ class solution_updater(threading.Thread):
                 new_result = self.solution_receiver.get(
                     block=True, timeout=0.1)
                 self.results[new_result[0]] = new_result[1]
+                # logging.debug(new_result)
             except q2.Empty:
                 continue
 
