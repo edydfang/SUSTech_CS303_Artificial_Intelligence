@@ -97,14 +97,14 @@ class Solver(object):
         cur_set.add(inserted_node[1])
         cur_spread = -inserted_node[0]
         cur_max = 1
-        count = 0
+        # count = 0
         # endtime = time.time()
         # logging.debug(endtime - starttime)
         # starttime = endtime
         while len(cur_set) < self.num_k:
             next_node = heapq.heappop(state_list)
             if next_node[0] < cur_max:
-                count += 1
+                # count += 1
                 new_spread = self.seed_evaluate(
                     set.union(cur_set, {next_node[1]}))
                 diff = new_spread - cur_spread
