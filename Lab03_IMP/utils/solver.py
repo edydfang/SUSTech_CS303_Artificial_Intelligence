@@ -33,6 +33,8 @@ class Solver(object):
         # use degree discount heuristics
         if time_limit > 0:
             self.seedset_heristics = self.degree_discount()
+            # print(self.seedset_heristics)
+            # os._exit(0)
             timeup_thread = threading.Thread(target=self.output_heristics)
             timeup_thread.start()
         # initialize the process pool
