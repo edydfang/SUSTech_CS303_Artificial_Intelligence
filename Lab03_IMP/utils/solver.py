@@ -43,8 +43,12 @@ class Solver(object):
         for idx in range(N_PROCESSORS):
             new_task_queue = Queue()
             new_result_queue = Queue()
+            if random_seed:
+                new_seed = random_seed + str(idx)
+            else:
+                new_seed = None
             evaluator = Evaluator(
-                graph, model, new_task_queue, new_result_queue, random_seed + str(idx))
+                graph, model, new_task_queue, new_result_queue, new_seed)
             self.workers.append((evaluator, new_task_queue, new_result_queue))
             evaluator.start()
 
@@ -165,6 +169,5 @@ class Solver(object):
         '''
         when time up output bad solution
         '''
-        time.sleep(self.time_limit-time.time()+ self.time_start)
+        time.sleep(self.time_limit - time.time() + self.time_start)
         self.output_seedset(self.seedset_heristics)
-

@@ -93,10 +93,11 @@ def main():
         proc.start()
         begin = (time.time() - start)
 
-    # start a thread for timing
-    thread2 = Thread(target=time_up_sig, args=(time_limit, begin, estimaters))
-    thread2.daemon = True
-    thread2.start()
+    if termination_type == 1 and time_limit is not None:
+        # start a thread for timing
+        thread2 = Thread(target=time_up_sig, args=(time_limit, begin, estimaters))
+        thread2.daemon = True
+        thread2.start()
     # exit
     for proc in estimaters:
         proc.join()
