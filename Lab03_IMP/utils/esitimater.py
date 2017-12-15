@@ -31,7 +31,7 @@ class Estimater(object):
         get the influenece valuence
         '''
         # logging.debug("get result")
-        sim_round = 100
+        sim_round = 1000
         sum_activated = 0
         for _ in range(sim_round):
             estimated_set = self.model()
@@ -48,7 +48,7 @@ class Estimater(object):
         '''
         if self.ter_type == 0:
             # logging.debug('a')
-            for _ in range(100):
+            for _ in range(10):
                 self.get_result()
         else:
             # logging.debug('b')
@@ -63,13 +63,12 @@ class Estimater(object):
         logging.debug(self.seeds)
         next_layer = set(self.seeds)
         while next_layer:
+            activated = set.union(activated, next_layer)
             new_layer = set()
             for node in next_layer:
                 for linked_node, value in self.graph[node].iteritems():
-                    rnd = random.random()
-                    if linked_node not in activated and rnd < value['weight']:
+                    if linked_node not in activated and random.random() < value['weight']:
                         new_layer.add(linked_node)
-            activated = set.union(activated, next_layer)
             # print(activated)
             next_layer = new_layer
         return activated

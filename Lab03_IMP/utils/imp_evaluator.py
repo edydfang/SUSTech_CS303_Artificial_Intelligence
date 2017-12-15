@@ -52,13 +52,12 @@ class Evaluator(Process):
             activated = set()
             next_layer = set(seeds)
             while next_layer:
+                activated = set.union(activated, next_layer)
                 new_layer = set()
                 for node in next_layer:
                     for linked_node, value in self.graph[node].iteritems():
-                        rnd = random.random()
-                        if linked_node not in activated and rnd < value['weight']:
+                        if linked_node not in activated and random.random() < value['weight']:
                             new_layer.add(linked_node)
-                activated = set.union(activated, next_layer)
                 next_layer = new_layer
             cnt += len(activated)
         return cnt / sim_round
