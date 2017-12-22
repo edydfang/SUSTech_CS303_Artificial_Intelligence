@@ -5,6 +5,7 @@ ISE
 from __future__ import division
 import random
 import logging
+import numpy as np
 
 
 class Estimater(object):
@@ -19,6 +20,7 @@ class Estimater(object):
         self.graph = graph
         self.seeds = seeds
         self.nodes = self.graph.vertices()
+        self.max_node = max(self.nodes)
         self.model = model_map[model]
         self.solution_receiver = solution_receiver
         self.processid = processid
@@ -34,8 +36,8 @@ class Estimater(object):
         sim_round = 1000
         sum_activated = 0
         for _ in range(sim_round):
-            estimated_set = self.model()
-            sum_activated += len(estimated_set)
+            estimated_spread = self.model()
+            sum_activated += estimated_spread
         self.cur_avg = (self.cur_round * self.cur_avg +
                         sum_activated / sim_round) / (self.cur_round + 1)
         self.cur_round += 1
@@ -59,19 +61,19 @@ class Estimater(object):
         '''
         use the independent Cascade model
         '''
-        activated = set()
+        active_array = np.zeros((self.max_node + 1))
         logging.debug(self.seeds)
-        next_layer = set(self.seeds)
+        next_layer = list(self.seeds)
         while next_layer:
-            activated = set.union(activated, next_layer)
-            new_layer = set()
+            active_array[next_layer] = 1
+            new_layer = list()
             for node in next_layer:
                 for linked_node, value in self.graph[node].iteritems():
-                    if linked_node not in activated and random.random() < value['weight']:
-                        new_layer.add(linked_node)
+                    if active_array[linked_node] == 0 and random.random() < value['weight']:
+                        new_layer.append(linked_node)
             # print(activated)
             next_layer = new_layer
-        return activated
+        return np.sum(active_array)
 
     def lt_simulate(self):
         '''
@@ -103,4 +105,4 @@ class Estimater(object):
                     changed_vertices.add(node)
                     activated.add(node)
             next_round = get_nextround(changed_vertices)
-        return activated
+        return len(activated)
