@@ -15,7 +15,7 @@ import os
 import time
 
 
-N_PROCESSORS = 8
+N_PROCESSORS = 1
 
 
 class bestSolution(object):

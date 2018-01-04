@@ -11,9 +11,9 @@ from utils.digraph import DiGraph
 from utils.graph import Graph
 from multiprocessing import Process, Queue
 
-MAX_ITERATION = 100
+MAX_ITERATION = 30
 P_M = 0.1
-PS_RANDOM = 19
+PS_RANDOM = 10
 PS = 1 + PS_RANDOM
 
 
@@ -37,6 +37,7 @@ class Solver(object):
         '''
         if self.x_bsf[1] > idv['fitness']:
             self.x_bsf = [idv['partition'], idv['fitness']]
+            # print(idv['fitness'])
             self.solution_receiver.put(self.x_bsf)
 
     def main_iteration(self, P):
@@ -45,6 +46,10 @@ class Solver(object):
         '''
         n_iteration = 0
         while n_iteration < MAX_ITERATION:
+            # print(n_iteration)
+            if n_iteration > MAX_ITERATION*3/4:
+                global P_M
+                P_M = 0.4
             # step1: random select two parent
             idxa, idxb = random.sample(xrange(PS), 2)
             if P[idxa]['fitness'] < P[idxb]['fitness']:
@@ -106,7 +111,7 @@ class Solver(object):
         P[0]['fitness'] = p_augment_merge_quality[2]
         self.update_bsf(P[0])
         for x in range(1, 1 + PS_RANDOM):
-            idv = self.ps_to_idv(self.path_scanning())
+            # idv = self.ps_to_idv(self.path_scanning())
             # #p = self.random_init()
             P[x] = self.get_new_random_idv()
             self.update_bsf(P[x])
@@ -129,6 +134,8 @@ class Solver(object):
         ::params: population individual
         ::output: new individual
         '''
+        '''
+        print('start local1')
         while True:
             result = self.method_two_opt(idv)
             if not result[0]:
@@ -136,6 +143,8 @@ class Solver(object):
             idv = result[1]
             self.update_bsf(idv)
             # print("local1:", idv['fitness'])
+        '''
+        # print('start local2')
         while True:
             result = self.method_swap(idv)
             if not result[0]:
@@ -143,6 +152,7 @@ class Solver(object):
             idv = result[1]
             self.update_bsf(idv)
             # print("local2:", idv['fitness'])
+        # print('start local3')
         while True:
             result = self.method_move(idv)
             if not result[0]:
@@ -150,6 +160,7 @@ class Solver(object):
             idv = result[1]
             self.update_bsf(idv)
             # print("local3:", idv['fitness'])
+        # print('end local')
         return idv
 
     @staticmethod
@@ -1138,19 +1149,20 @@ class Solver(object):
         load = defaultdict(dict)
         cost = defaultdict(dict)
         free_task = set(self.gf.get_tasks())
-        while len(free_task) > 0:
+        while free_task:
             k += 1
             R[k] = list()
             load[k], cost[k] = 0, 0
             end = self.depot
             u = None
             while True:
-                if len(free_task) == 0:
+                if not free_task:
                     break
                 d_min = float('inf')
                 for f_task in free_task:
                     if self.gf[f_task[0]][f_task[1]]['demand'] + load[k] > self.capacity:
-                        continue
+                        d_min = float('inf')
+                        break
                     if u == None:
                         u = f_task
                         d_min = self.gf.get_shortest_path(end, f_task[0])[1]
