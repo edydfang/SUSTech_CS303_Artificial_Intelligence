@@ -33,8 +33,6 @@ import random
 from utils.solver import Solver
 from utils.digraph import DiGraph
 
-N_PROCESSORS = 2
-
 
 def main():
     '''

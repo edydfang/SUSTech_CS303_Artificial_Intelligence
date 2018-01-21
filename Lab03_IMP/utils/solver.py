@@ -9,11 +9,12 @@ import heapq
 import time
 import os
 import threading
+import sys
 from multiprocessing import Queue
 from collections import defaultdict
 from utils.imp_evaluator import Evaluator
 
-N_PROCESSORS = 2
+N_PROCESSORS = 8
 
 
 class Solver(object):
@@ -79,6 +80,7 @@ class Solver(object):
         for worker in self.workers:
             worker[0].join()
         # logging.debug("exiting2")
+        sys.stdout.flush()
         os._exit(0)
 
     def solve_celf(self):
