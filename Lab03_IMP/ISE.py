@@ -33,13 +33,14 @@ import argparse
 import logging
 import time
 import threading
+import sys
 from threading import Thread
 import Queue as q2
 from multiprocessing import Process, Queue
 from utils.digraph import DiGraph
 from utils.esitimater import Estimater
 
-N_PROCESSORS = 2
+N_PROCESSORS = 8
 
 
 def main():
@@ -103,6 +104,7 @@ def main():
         proc.join()
     thread1.stop()
     print(str(sum(results) / N_PROCESSORS))
+    sys.stdout.flush()
 
 
 def start_estimater(graph, seeds, mode, solution_receiver, processid, termination_type, random_seed):
